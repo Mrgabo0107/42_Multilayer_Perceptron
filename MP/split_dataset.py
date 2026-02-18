@@ -2,7 +2,9 @@ import pandas as pd
 import numpy as np
 import argparse
 import textwrap
-
+import os
+import pickle
+import sys
 
 def parser():
     description = """\
@@ -60,8 +62,8 @@ def split_data(df, target_col, training_rate, seed=None):
     test_indx = []
 
     for c in classes:
-        idx = np.where(y == c)[0] # index for each class
-        np.random.shuffle(idx) # shuffle the index before add to a list
+        idx = np.where(y == c)[0]  # index for each class
+        np.random.shuffle(idx)  # shuffle the index before add to a list
         # number of samples of a class that goes to training set
         n_train = int(len(idx) * training_rate)
         # Split the indices into their respective lists.
@@ -79,12 +81,26 @@ def split_data(df, target_col, training_rate, seed=None):
     return training_df, test_df
 
 
+def save_splitted_data(training_df, test_df):
+    os.makedirs("../splitted_data", exist_ok=True)
+
+    with open("../splitted_data/training_data.pkl", "wb") as f:
+        pickle.dump(training_df, f)
+
+    with open("../splitted_data/test_data.pkl", "wb") as f:
+        pickle.dump(test_df, f)
+
+
 if __name__ == "__main__":
     # Get parameters
     training_rate, seed = parser()
 
     # Read csv
-    df = pd.read_csv("../data.csv", header=None)
+    try:
+        df = pd.read_csv("../data.csv", header=None)
+    except FileNotFoundError:
+        print("Put data.csv file next to MP folder")
+        sys.exit(1)
 
     # Check for empty entries (I leave it commented out since the dataset
     # provided by the school has no empty values, and these lines only serves
@@ -101,3 +117,7 @@ if __name__ == "__main__":
     # Split data according to training_rate, taking care to save the proportion
     # in the target classes:
     training_df, test_df = split_data(df, df.columns[0], training_rate, seed)
+
+    save_splitted_data(training_df, test_df)
+
+    print(training_df.head(10), test_df.head(10))
