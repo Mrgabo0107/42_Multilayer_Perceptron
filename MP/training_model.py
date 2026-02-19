@@ -1,6 +1,8 @@
 import pickle
 import pandas as pd
 import sys
+import numpy as np
+import os
 
 
 def load_training_data():
@@ -18,6 +20,30 @@ def load_training_data():
     return training_df
 
 
+def save_scaler(mean, std):
+    os.makedirs("../scaler", exist_ok=True)
+    with open("../scaler/scale_values.pkl", "wb") as f:
+        pickle.dump((mean, std), f)
+
+
+def separate_and_normalize(df):
+    target_col = df.columns[0]
+
+    y = df[target_col].to_numpy()
+    X = df.drop(target_col, axis=1).to_numpy()
+
+    mean = X.mean(axis=0)
+    std = X.std(axis=0)
+    std[std == 0] = 1
+
+    X = (X - mean) / std
+
+    # save scaler values to avoid data leakage in test:
+    save_scaler(mean, std)
+
+    return X, y
+
+
 if __name__ == "__main__":
     training_df = load_training_data()
-    print(training_df.head(10))
+    X, y = separate_and_normalize(training_df)
