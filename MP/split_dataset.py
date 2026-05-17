@@ -120,4 +120,4 @@ if __name__ == "__main__":
 
     save_splitted_data(training_df, test_df)
 
-    print(training_df.head(10), test_df.head(10))
+    print(training_df.head(10), "\n" , test_df.head(10))

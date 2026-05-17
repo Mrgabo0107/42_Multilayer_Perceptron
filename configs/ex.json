@@ -1,0 +1,27 @@
+{
+  "model_name": "breast_cancer_mlp",
+  "topology": {
+    "input_layer_activation": "sigmoid",
+    "hidden_layers": [
+      { "n_neurons": 32, "activation": "relu", "initializer": "heUniform" },
+      { "n_neurons": 24, "activation": "tanh", "initializer": "xavier" },
+      { "n_neurons": 16, "activation": "sigmoid", "initializer": "heNormal" }
+    ],
+    "output_layer_initializer": "heUniform"
+  },
+  "training": {
+    "epochs": 150,
+    "batch_size": 16,
+    "learning_rate": 0.01,
+    "loss": "categorical_crossentropy",
+    "optimizer": {
+      "type": "adam",
+      "params": { "beta1": 0.9, "beta2": 0.999 }
+    }
+  },
+  "early_stopping": {
+    "enabled": true,
+    "patience": 10,
+    "monitor": "val_loss"
+  }
+}
