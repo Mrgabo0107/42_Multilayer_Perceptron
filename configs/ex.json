@@ -1,13 +1,14 @@
 {
-  "model_name": "breast_cancer_mlp",
+  "model_name": "config  12",
   "topology": {
-    "input_layer_activation": "sigmoid",
+    "input_layer_activation": "tanh",
     "hidden_layers": [
       { "n_neurons": 32, "activation": "relu", "initializer": "heUniform" },
       { "n_neurons": 24, "activation": "tanh", "initializer": "xavier" },
-      { "n_neurons": 16, "activation": "sigmoid", "initializer": "heNormal" }
+      { "n_neurons": 16, "activation": "sigmoid", "initializer": "heNormal" },
+      { "n_neurons": 260, "activation": "tanh", "initializer": "random" }
     ],
-    "output_layer_initializer": "heUniform"
+    "output_layer_initializer": "xavier"
   },
   "training": {
     "epochs": 150,

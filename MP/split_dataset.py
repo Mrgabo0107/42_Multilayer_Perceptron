@@ -5,6 +5,10 @@ import textwrap
 import os
 import pickle
 import sys
+from pathlib import Path
+
+MP_PATH = Path(__file__).resolve().parent
+
 
 def parser():
     description = """\
@@ -82,12 +86,12 @@ def split_data(df, target_col, training_rate, seed=None):
 
 
 def save_splitted_data(training_df, test_df):
-    os.makedirs("../splitted_data", exist_ok=True)
+    os.makedirs(MP_PATH.parent / "splitted_data", exist_ok=True)
 
-    with open("../splitted_data/training_data.pkl", "wb") as f:
+    with open(MP_PATH.parent / "splitted_data" / "training_data.pkl", "wb") as f:
         pickle.dump(training_df, f)
 
-    with open("../splitted_data/test_data.pkl", "wb") as f:
+    with open(MP_PATH.parent / "splitted_data" / "test_data.pkl", "wb") as f:
         pickle.dump(test_df, f)
 
 
@@ -97,7 +101,7 @@ if __name__ == "__main__":
 
     # Read csv
     try:
-        df = pd.read_csv("../data.csv", header=None)
+        df = pd.read_csv(MP_PATH.parent / "data.csv", header=None)
     except FileNotFoundError:
         print("Put data.csv file next to MP folder")
         sys.exit(1)
