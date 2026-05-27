@@ -13,7 +13,7 @@ def parser():
     2. The name to the .json configuration file describing the neural
        network architecture and training parameters.
 
-    If no dataset path is provided, the program defaults to training_data.pkl.
+    If no dataset name is provided, the program defaults to training_data.pkl.
     All training data must be located inside the "../splitted_data/" directory
     relative to the script's location.
 
@@ -23,9 +23,9 @@ def parser():
     training can always execute.
 
     The absolute global defaults (used if the JSON is empty or missing) are:
-    - Input Layer Activation: sigmoid
-    - Hidden Layers: 2 layers with 24 neurons each, using sigmoid and heUniform
-    - Output Layer Initializer: heUniform
+    - Input Layer: raw features forwarded directly to the first hidden layer
+    - Hidden Layers: 2 layers with 24 neurons each, using relu and heUniform
+    - Output Layer Initializer: xavier
     - Training: 100 epochs, batch_size 16, learning_rate 0.01, loss categorical_crossentropy
     - Optimizer: sgd (Adam defaults: beta1=0.9, beta2=0.999)
     - Early Stopping: enabled, patience 10, monitor val_loss
@@ -33,25 +33,25 @@ def parser():
     All configuration files must be located inside the ../configs/ directory
     relative to the script's location.
 
-    The input layer size is automatically determined by the number of
-    features in the dataset (30 features excluding the target variable in this 
-    project). The design explicitly allows customization of both the input and
-    output layers: the input layer supports configurable activation functions,
-    while the output layer supports configurable initialization, while always
-    using a fixed softmax activation over two neurons for binary classification.
+    The input features are determined automatically by the dataset shape
+    (30 features excluding the target variable in this project). The design
+    explicitly treats the input as raw features only: there is no separate
+    input-layer activation or initializer. The output layer supports
+    configurable initialization while always using a fixed softmax activation
+    over two neurons for binary classification.
 
     Configuration file example:
 
     {
       "model_name": "breast_cancer_mlp",
       "topology": {
-        "input_layer_activation": "sigmoid",
         "hidden_layers": [
           { "n_neurons": 32, "activation": "relu", "initializer": "heUniform" },
+          { "n_neurons": 12, "activation": "relu", "initializer": "heNormal" },
           { "n_neurons": 24, "activation": "tanh", "initializer": "xavier" },
-          { "n_neurons": 16, "activation": "sigmoid", "initializer": "heNormal" }
+          { "n_neurons": 16, "activation": "sigmoid", "initializer": "xavier" }
         ],
-        "output_layer_initializer": "heUniform"
+        "output_layer_initializer": "xavier"
       },
       "training": {
         "epochs": 150,
@@ -72,8 +72,8 @@ def parser():
 
     Valid configuration values & Fallback constraints:
 
-    Activation functions (Input & Hidden):
-    ["relu", "sigmoid", "tanh"] -> Invalid values fallback to "sigmoid"
+    Activation functions (Hidden):
+    ["relu", "sigmoid", "tanh"] -> Invalid values fallback to "relu"
 
     Initializers (Hidden & Output):
     ["heUniform", "heNormal", "xavier", "random"] -> Invalid values fallback to "heUniform"
@@ -105,7 +105,7 @@ def parser():
     monitor: ["val_loss", "val_accuracy"] -> Invalid values fallback to "val_loss"
     """
     parser = argparse.ArgumentParser(
-        description = textwrap.dedent(description),
+        description=textwrap.dedent(description),
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(

@@ -1,4 +1,9 @@
 class Config:
+    """
+    This class takes a JSON object that has already been loaded from
+    the configuration file and organizes it so it can later be used
+    for the creation and structuring of the model.
+    """
     def __init__(self, json_data=None):
         if json_data is None:
             json_data = {}
@@ -9,18 +14,17 @@ class Config:
         training_cfg = json_data.get("training", {})
         early_cfg = json_data.get("early_stopping", {})
         
-        self.input_layer_activation = topology_cfg.get("input_layer_activation", "sigmoid")
-        self.output_layer_initializer = topology_cfg.get("output_layer_initializer", "heUniform")
+        self.output_layer_initializer = topology_cfg.get("output_layer_initializer", "xavier")
         
         self.hidden_layers = topology_cfg.get("hidden_layers", [
-            {"n_neurons": 24, "activation": "sigmoid", "initializer": "heUniform"},
-            {"n_neurons": 24, "activation": "sigmoid", "initializer": "heUniform"}
+            {"n_neurons": 24, "activation": "relu", "initializer": "heUniform"},
+            {"n_neurons": 24, "activation": "relu", "initializer": "heUniform"}
         ])
 
         if not isinstance(self.hidden_layers, list) or len(self.hidden_layers) < 2:
             self.hidden_layers = [
-                {"n_neurons": 24, "activation": "sigmoid", "initializer": "heUniform"},
-                {"n_neurons": 24, "activation": "sigmoid", "initializer": "heUniform"}
+                {"n_neurons": 24, "activation": "relu", "initializer": "heUniform"},
+                {"n_neurons": 24, "activation": "relu", "initializer": "heUniform"}
             ]
 
         cleaned_layers = []
@@ -30,15 +34,15 @@ class Config:
             
             clean_layer = {
                 "n_neurons": int(layer.get("n_neurons", 24)),
-                "activation": str(layer.get("activation", "sigmoid")),
+                "activation": str(layer.get("activation", "relu")),
                 "initializer": str(layer.get("initializer", "heUniform"))
             }
             cleaned_layers.append(clean_layer)
 
         if len(cleaned_layers) < 2:
             cleaned_layers = [
-                {"n_neurons": 24, "activation": "sigmoid", "initializer": "heUniform"},
-                {"n_neurons": 24, "activation": "sigmoid", "initializer": "heUniform"}
+                {"n_neurons": 24, "activation": "relu", "initializer": "heUniform"},
+                {"n_neurons": 24, "activation": "relu", "initializer": "heUniform"}
             ]
         
         self.hidden_layers = cleaned_layers
@@ -64,13 +68,9 @@ class Config:
         valid_activations = ["relu", "sigmoid", "tanh"]
         valid_initializers = ["heUniform", "heNormal", "xavier", "random"]
         
-        if self.input_layer_activation not in valid_activations:
-            print(f"Warning: Invalid input activation '{self.input_layer_activation}'. Falling back to 'sigmoid'.")
-            self.input_layer_activation = "sigmoid"
-            
         if self.output_layer_initializer not in valid_initializers:
-            print(f"Warning: Invalid output initializer '{self.output_layer_initializer}'. Falling back to 'heUniform'.")
-            self.output_layer_initializer = "heUniform"
+            print(f"Warning: Invalid output initializer '{self.output_layer_initializer}'. Falling back to 'xavier'.")
+            self.output_layer_initializer = "xavier"
 
         if self.loss not in ["categorical_crossentropy", "mse"]:
             print(f"Warning: Invalid loss '{self.loss}'. Falling back to 'categorical_crossentropy'.")
@@ -119,8 +119,8 @@ class Config:
                 layer["n_neurons"] = 24
                 
             if layer["activation"] not in valid_activations:
-                print(f"Warning: Layer {i} invalid activation '{layer['activation']}'. Falling back to 'sigmoid'.")
-                layer["activation"] = "sigmoid"
+                print(f"Warning: Layer {i} invalid activation '{layer['activation']}'. Falling back to 'relu'.")
+                layer["activation"] = "relu"
                 
             if layer["initializer"] not in valid_initializers:
                 print(f"Warning: Layer {i} invalid initializer '{layer['initializer']}'. Falling back to 'heUniform'.")
@@ -130,12 +130,12 @@ class Config:
         """Genera una representación en string limpia y organizada de la configuración actual."""
         lines = []
         lines.append("=" * 50)
-        lines.append(f" CONFIGURATION: {self.model_name.upper()} ")
+        lines.append(f" CONFIGURATION: {self.model_name} ")
         lines.append("=" * 50)
         
         # 1. Topología
         lines.append("\n[TOPOLOGY]")
-        lines.append(f"  Input Layer Activation:  {self.input_layer_activation}")
+        lines.append("  Input Layer: raw input features passed directly to the first hidden layer")
         lines.append("  Hidden Layers Architecture:")
         for i, layer in enumerate(self.hidden_layers):
             lines.append(f"    - Layer {i+1}: {layer['n_neurons']} neurons | "

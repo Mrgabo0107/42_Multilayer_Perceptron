@@ -1,11 +1,10 @@
 import pickle
 import pandas as pd
 import sys
-import numpy as np
 import os
 import json
 from pathlib import Path
-from trainingMP import Config, parser
+from trainingMP import Config, parser, MultiLayerPerceptron
 
 
 MP_PATH = Path(__file__).resolve().parent
@@ -39,39 +38,35 @@ def load_training_data(path):
     return training_df
 
 
-def save_scaler(mean, std, data_name):
-    os.makedirs(MP_PATH.parent / "scaler", exist_ok=True)
-    with open(MP_PATH.parent / "scaler" / (Path(data_name).stem + "_scale_values.pkl"), "wb") as f:
-        pickle.dump((mean, std), f)
-
-
 def separate_and_normalize(df, data_name):
+    def save_scaler(mean, std):
+        os.makedirs(MP_PATH.parent / "scaler", exist_ok=True)
+        with open(MP_PATH.parent / "scaler" / (Path(data_name).stem + "_scale_values.pkl"), "wb") as f:
+            pickle.dump((mean, std), f)
+    
     target_col = df.columns[0]
 
-    y = df[target_col].to_numpy()
-    X = df.drop(target_col, axis=1).to_numpy()
+    target = df[target_col].to_numpy()
+    data = df.drop(target_col, axis=1).to_numpy()
 
-    mean = X.mean(axis=0)
-    std = X.std(axis=0)
+    mean = data.mean(axis=0)
+    std = data.std(axis=0)
+    # protection againt data without variation
     std[std == 0] = 1
 
-    X = (X - mean) / std
+    data = (data - mean) / std
 
     # save scaler values to avoid data leakage in test:
-    save_scaler(mean, std, data_name)
+    save_scaler(mean, std)
 
-    return X, y
+    return data, target
 
 
 if __name__ == "__main__":
     data_name, config_name = parser()
     data_path = MP_PATH.parent / "splitted_data" / data_name
     config_path = MP_PATH.parent / "configs" / config_name if config_name else None
-    print(set_configuration(config_path))
     training_df = load_training_data(data_path)
-    X, y = separate_and_normalize(training_df, data_name)
-    # validar la configuracion si es correcta se crea el objeto. 
-    # se debe crear clase layer, protegiendo:
-    #     - number of features in imput
-    #     - softmax for output
-    #     - setteo standar en caso de error
+    normalized_data, target = separate_and_normalize(training_df, data_name)
+    print(normalized_data.shape)
+    Model = MultiLayerPerceptron(set_configuration(config_path), normalized_data)
