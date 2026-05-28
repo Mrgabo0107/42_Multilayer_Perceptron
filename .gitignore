@@ -3,3 +3,4 @@ __pycache__/
 splitted_data/
 scaler/
 configs/
+*.egg-info/

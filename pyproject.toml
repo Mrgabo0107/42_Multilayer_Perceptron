@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MP"
+version = "0.1.0"
+description = "Multilayer Perceptron from scratch - School 42"
+dependencies = [
+    "pandas",
+    "numpy"
+]
+
+[tool.setuptools]
+packages = ["MP", "MP.math_utils", "MP.training_mp"]

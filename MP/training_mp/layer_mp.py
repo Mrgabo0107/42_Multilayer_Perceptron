@@ -1,8 +1,12 @@
 import numpy as np
 
+
+SHOW_MATRICES_DEBUG = False
+
 class Layer:
     def __init__(self, n_in, n_out, activation="relu", initializer="heUniform"):
         self.activation_name = activation
+        self.initializer = initializer
         
         # 1. Weight (W) and Bias (b) Initialization
         self.W, self.b = self._initialize_weights(n_in, n_out, initializer)
@@ -55,3 +59,32 @@ class Layer:
             W = np.random.uniform(-limit, limit, size=(n_in, n_out))
             
         return W, b
+    
+    def __str__(self):
+        w_shape = self.W.shape if self.W is not None else (0, 0)
+        b_shape = self.b.shape if self.b is not None else (0, 0)
+        
+        # Extracción de métricas de los Pesos (W)
+        if self.W is not None:
+            w_stats = f"min:{self.W.min():.4f} | max:{self.W.max():.4f} | mean:{self.W.mean():.4f}"
+            if SHOW_MATRICES_DEBUG:
+                w_stats += "\n" + "\n".join(f"        {line}" for line in str(self.W).split("\n"))
+        else:
+            w_stats = "Uninitialized"
+            
+        # Extracción de métricas de los Bias (b)
+        if self.b is not None:
+            b_stats = f"min:{self.b.min():.4f} | max:{self.b.max():.4f} | mean:{self.b.mean():.4f}"
+            if SHOW_MATRICES_DEBUG:
+                 b_stats += f"\n        {str(self.b)}"
+        else:
+            b_stats = "Uninitialized"
+
+        return (
+            f"Layer Specs:\n"
+            f"  |- Configuration: Activation = {self.activation_name} \n"
+            f"  |- Weights (W):   Shape = {str(w_shape):<10} | Stats -> {w_stats}\n"
+            f"  |- Biases (b):    Shape = {str(b_shape):<10} | Stats -> {b_stats}\n"
+            f"  |- Initializer = {self.initializer}"
+        )
+

@@ -4,7 +4,7 @@ import sys
 import os
 import json
 from pathlib import Path
-from trainingMP import Config, parser, MultiLayerPerceptron
+from MP.training_mp import Config, parser, MultiLayerPerceptron
 
 
 MP_PATH = Path(__file__).resolve().parent
@@ -68,5 +68,5 @@ if __name__ == "__main__":
     config_path = MP_PATH.parent / "configs" / config_name if config_name else None
     training_df = load_training_data(data_path)
     normalized_data, target = separate_and_normalize(training_df, data_name)
-    print(normalized_data.shape)
     Model = MultiLayerPerceptron(set_configuration(config_path), normalized_data)
+    print(f'aca {Model}')
