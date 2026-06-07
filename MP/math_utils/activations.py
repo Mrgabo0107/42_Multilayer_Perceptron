@@ -8,9 +8,6 @@ def relu_deriv(n):
     return np.where(n > 0, 1.0, 0.0)
 
 def sigmoid(n):
-    return 1 / (1 + np.exp(-n))
-
-def sigmoid(n):
     return np.where(
         n >= 0,
         1 / (1 + np.exp(-n)),

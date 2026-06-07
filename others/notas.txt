@@ -1,13 +1,7 @@
 Tareas en orden de importancia:
--   testear clase config y cambiar todo lo que esta de espanol a ingles
--   revisar que al correr un script desde alguna otra ruta, los paths sean
-    interpretados desde la posicion del script y no de la ejecucion
--   configurar el lector de data trainnign para recibir datasets dado un path
-    por ahora es un parametro no usado
--   factorizar para lejibilidad
--   asegurarse que el input layer se inicialice con el numero de features y no a la mano
+-   modificar trainnign para que reciba validation data y hacer graficas
 -   hacer graficas de raw data para mostrar lo que se espera
-
+- usa ploti y seaborn para graficas
 
 
 

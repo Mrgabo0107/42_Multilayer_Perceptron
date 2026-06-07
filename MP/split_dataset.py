@@ -85,14 +85,15 @@ def split_data(df, target_col, training_rate, seed=None):
     return training_df, test_df
 
 
-def save_splitted_data(training_df, test_df):
+def save_splitted_data(training_df, validation_df):
     os.makedirs(MP_PATH.parent / "splitted_data", exist_ok=True)
 
     with open(MP_PATH.parent / "splitted_data" / "training_data.pkl", "wb") as f:
         pickle.dump(training_df, f)
 
-    with open(MP_PATH.parent / "splitted_data" / "test_data.pkl", "wb") as f:
-        pickle.dump(test_df, f)
+    # Ahora se guarda explícitamente como validation_data.pkl
+    with open(MP_PATH.parent / "splitted_data" / "validation_data.pkl", "wb") as f:
+        pickle.dump(validation_df, f)
 
 
 if __name__ == "__main__":
@@ -120,8 +121,8 @@ if __name__ == "__main__":
 
     # Split data according to training_rate, taking care to save the proportion
     # in the target classes:
-    training_df, test_df = split_data(df, df.columns[0], training_rate, seed)
+    training_df, validation_df = split_data(df, df.columns[0], training_rate, seed)
 
-    save_splitted_data(training_df, test_df)
+    save_splitted_data(training_df, validation_df)
 
-    print(training_df.head(10), "\n" , test_df.head(10))
+    print(training_df.head(10), "\n" , validation_df.head(10))

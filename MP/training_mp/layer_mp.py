@@ -1,5 +1,6 @@
 import numpy as np
-
+from MP.math_utils.activations import relu, sigmoid, tan_h
+from MP.math_utils.out_layer import softmax
 
 SHOW_MATRICES_DEBUG = False
 
@@ -88,3 +89,17 @@ class Layer:
             f"  |- Initializer = {self.initializer}"
         )
 
+    def compute_activation(self):
+        activations = {
+            "relu": relu,
+            "sigmoid": sigmoid,
+            "tan_h": tan_h,
+            "softmax": softmax
+        }
+
+        function = activations.get(self.activation_name)
+
+        if function is None:
+            raise ValueError(f"activation name not supported: {self.activation_name}")
+
+        return function(self.Z)

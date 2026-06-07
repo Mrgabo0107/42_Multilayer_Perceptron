@@ -1,15 +1,19 @@
 from MP.training_mp.layer_mp import Layer
+from MP.math_utils.out_layer import binary_to_one_hot, softmax_cross_entrop, softmax_mse
 
 class MultiLayerPerceptron:
-    def __init__(self, config, data):
+    def __init__(self, config, data_tuple):
         self.config = config
         self.layers = []
+        
+        # Desempaquetamos de forma limpia la tupla que viene del main
+        self.X_train, self.y_train, self.X_val, self.y_val = data_tuple
         
         # 1. Input features are passed directly to the first hidden layer.
         # There is no separate input-layer activation or initializer here.
         # The first hidden layer receives the raw input and applies its own weights.
         
-        current_dim = data.shape[1]  # Number of features in the incoming dataset
+        current_dim = self.X_train.shape[1]  # Number of features in the incoming dataset
         
         # Build hidden layers by iterating through the JSON configuration
         for layer_cfg in self.config.hidden_layers:
@@ -53,6 +57,9 @@ class MultiLayerPerceptron:
             res.append(f"  » Learning Rate: {lr}")
             res.append(f"  » Epochs:        {epochs}")
             res.append(f"  » Batch Size:    {batch_size}")
+            # Añadimos información útil sobre el tamaño de los datos en la configuración global
+            res.append(f"  » Train Samples: {self.X_train.shape[0]}")
+            res.append(f"  » Val Samples:   {self.X_val.shape[0]}")
         else:
             res.append("  » No config object metadata could be fetched.")
             
@@ -71,3 +78,21 @@ class MultiLayerPerceptron:
         res.append(divider)
         
         return "\n".join(res)
+    
+    def forward(self, batch):
+        self.layers[0].A_in = batch
+        
+        num_layers = len(self.layers)
+        
+        for i, layer in enumerate(self.layers):
+            layer.Z = layer.A_in @ layer.W + layer.b
+            layer.A = layer.compute_activation()
+            
+            if i < num_layers - 1:
+                self.layers[i + 1].A_in = layer.A
+        return self.layers[-1].A
+    
+    def compute_loss(self):
+        losses = {
+
+        }
