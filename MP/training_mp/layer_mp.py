@@ -1,5 +1,5 @@
 import numpy as np
-from MP.math_utils.activations import relu, sigmoid, tan_h
+from MP.math_utils.activations import relu, sigmoid, tan_h, relu_deriv, sigmoid_deriv, tan_h_deriv
 from MP.math_utils.out_layer import softmax
 
 SHOW_MATRICES_DEBUG = False
@@ -100,6 +100,20 @@ class Layer:
         function = activations.get(self.activation_name)
 
         if function is None:
-            raise ValueError(f"activation name not supported: {self.activation_name}")
-
+            raise ValueError(f"Activation name not supported: {self.activation_name}")
+            
         return function(self.Z)
+    
+    def compute_activation_derivate(self):
+        derivates = {
+            "relu": relu_deriv,
+            "sigmoid": sigmoid_deriv,
+            "tan_h": tan_h_deriv,
+        }
+
+        derivate = derivates.get(self.activation_name)
+
+        if derivate is None:
+            raise ValueError(f"Unsupported activation function: {self.activation_name}. Cannot compute derivative.")
+        
+        return derivate(self.Z)

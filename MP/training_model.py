@@ -23,20 +23,6 @@ def set_configuration(path):
         return Config()
 
 
-# def load_training_data(path):
-#     try:
-#         with open(path, "rb") as f:
-#             training_df = pickle.load(f)
-#             if not isinstance(training_df, pd.DataFrame):
-#                 raise TypeError("The file doesn't contains a pandas dataframe")
-#     except TypeError as e:
-#         print(e)
-#         sys.exit(1)
-#     except FileNotFoundError:
-#         print("Error opening training data, Make sure you have splitted data.csv")
-#         sys.exit(1)
-#     return training_df
-
 def load_dataset(path):
     try:
         with open(path, "rb") as f:
@@ -51,29 +37,6 @@ def load_dataset(path):
         sys.exit(1)
     return df
 
-
-# def separate_and_normalize(df, data_name):
-#     def save_scaler(mean, std):
-#         os.makedirs(MP_PATH.parent / "scaler", exist_ok=True)
-#         with open(MP_PATH.parent / "scaler" / (Path(data_name).stem + "_scale_values.pkl"), "wb") as f:
-#             pickle.dump((mean, std), f)
-    
-#     target_col = df.columns[0]
-
-#     target = df[target_col].to_numpy()
-#     data = df.drop(target_col, axis=1).to_numpy()
-
-#     mean = data.mean(axis=0)
-#     std = data.std(axis=0)
-#     # protection againt data without variation
-#     std[std == 0] = 1
-
-#     data = (data - mean) / std
-
-#     # save scaler values to avoid data leakage in test:
-#     save_scaler(mean, std)
-
-#     return data, target
 
 def separate_and_normalize(train_df, val_df, data_name):
     def save_scaler(mean, std):
@@ -110,8 +73,6 @@ def separate_and_normalize(train_df, val_df, data_name):
 
 if __name__ == "__main__":
     data_names, config_name = parser()
-
-    print(f"aca {data_names}")
 
     # data_path = MP_PATH.parent / "splitted_data" / data_name
     train_path = MP_PATH.parent / "splitted_data" / data_names[0]

@@ -5,7 +5,7 @@ def softmax(v):
     e = np.exp(shift)
     return e / np.sum(e, axis=-1, keepdims=True)
 
-def softmax_cross_entrop(target, pre_activ):
+def softmax_crossentropy(target, pre_activ):
     s = softmax(pre_activ)
     return s - target
 
@@ -15,7 +15,7 @@ def softmax_mse(target, pre_activ):
     sum_dot = np.sum(grd_loss_s * s, axis=-1, keepdims=True)
     return s * (grd_loss_s - sum_dot)
 
-def cross_entropy(target, s):
+def c_crossentropy(target, s):
     # avoid Nan in extreme values (log function)
     s_clipped = np.clip(s, 1e-15, 1.0 - 1e-15)
     return -np.sum(target * np.log(s_clipped)) / target.shape[0]

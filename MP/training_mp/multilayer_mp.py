@@ -1,5 +1,6 @@
+import numpy as np
 from MP.training_mp.layer_mp import Layer
-from MP.math_utils.out_layer import binary_to_one_hot, softmax_cross_entrop, softmax_mse
+from MP.math_utils.out_layer import binary_to_one_hot, softmax_crossentropy, softmax_mse, mse, c_crossentropy
 
 class MultiLayerPerceptron:
     def __init__(self, config, data_tuple):
@@ -8,6 +9,9 @@ class MultiLayerPerceptron:
         
         # Desempaquetamos de forma limpia la tupla que viene del main
         self.X_train, self.y_train, self.X_val, self.y_val = data_tuple
+
+        self.Y_train_oh = binary_to_one_hot(self.y_train)
+        self.Y_val_oh = binary_to_one_hot(self.y_val)
         
         # 1. Input features are passed directly to the first hidden layer.
         # There is no separate input-layer activation or initializer here.
@@ -36,6 +40,7 @@ class MultiLayerPerceptron:
                 initializer=self.config.output_layer_initializer
             )
         )
+        self.num_layers = len(self.layers)
 
     def __str__(self):
         divider = "=" * 90
@@ -82,17 +87,38 @@ class MultiLayerPerceptron:
     def forward(self, batch):
         self.layers[0].A_in = batch
         
-        num_layers = len(self.layers)
-        
         for i, layer in enumerate(self.layers):
             layer.Z = layer.A_in @ layer.W + layer.b
-            layer.A = layer.compute_activation()
             
-            if i < num_layers - 1:
+            if i < self.num_layers - 1:
+                layer.A = layer.compute_activation()
                 self.layers[i + 1].A_in = layer.A
-        return self.layers[-1].A
+        return self.layers[-1].Z
     
-    def compute_loss(self):
-        losses = {
-
+    # The parameters has to be general to allow shuffled targets
+    def compute_output_gradient(self, target_batch_oh, output_preactiv):
+        gradients = {
+            "mse": softmax_mse,
+            "categorical_crossentropy": softmax_crossentropy
         }
+
+        method = gradients.get(self.config.loss)
+
+        if method is None:
+            raise ValueError(f"The method to find the output layer gradient '{self.config.loss}' is not allowed")
+
+        # Operación directa, limpia y ultra-rápida sin conversiones internas
+        return method(target_batch_oh, output_preactiv)
+    
+    def backward(self, output_gradient):
+        dZ = output_gradient
+        m = dZ.shape()[0]
+        for i in range(self.num_layers - 1, -1, -1):
+            layer = self.layers[i]
+            layer.db = np.sum(dZ, axis=0, keepdims=True) / m
+            layer.dW = (layer.A_in.T @ dZ) / m
+
+            if i > 0:
+                dA_in = dZ @ layer.W.T
+                previous_layer = self.layers[i - 1]
+                dZ = dA_in * previous_layer.compute_activation_derivative()

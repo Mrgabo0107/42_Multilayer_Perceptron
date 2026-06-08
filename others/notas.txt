@@ -72,3 +72,6 @@ def validate_config(config_path, input_dim):
         raise ValueError("The output layer must have exactly 2 neurons for M/B classification.")
 
     return conf
+
+
+    
