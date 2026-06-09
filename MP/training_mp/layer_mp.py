@@ -104,7 +104,7 @@ class Layer:
             
         return function(self.Z)
     
-    def compute_activation_derivate(self):
+    def compute_activation_derivative(self):
         derivates = {
             "relu": relu_deriv,
             "sigmoid": sigmoid_deriv,

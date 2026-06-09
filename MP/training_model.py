@@ -5,6 +5,8 @@ import os
 import json
 from pathlib import Path
 from MP.training_mp import Config, parser, MultiLayerPerceptron
+from MP.math_utils.out_layer import binary_to_one_hot
+from MP.math_utils.optimizers import sgd, adam
 
 
 MP_PATH = Path(__file__).resolve().parent
@@ -71,22 +73,44 @@ def separate_and_normalize(train_df, val_df, data_name):
     return train_data_normalized, train_target, val_data_normalized, val_target
 
 
+def set_optimizer(config):
+    optimizers = {
+        "sgd" : sgd,
+        "adam": adam
+    }
+
+    optimizer = optimizers.get(config.optimizer_type)
+
+    if optimizer is None:
+        raise ValueError(f"The optimizer {config.optimizer_type} is not allowed")
+    
+    return optimizer(config)
+
+def fit(config, mlp, optimizer, train_set, val_set):
+    pass
+
+
 if __name__ == "__main__":
     data_names, config_name = parser()
-
-    # data_path = MP_PATH.parent / "splitted_data" / data_name
     train_path = MP_PATH.parent / "splitted_data" / data_names[0]
     val_path = MP_PATH.parent / "splitted_data" / data_names[1]
-    
     config_path = MP_PATH.parent / "configs" / config_name if config_name else None
     
-    # training_df = load_training_data(data_path)
+    config =  set_configuration(config_path)
+    
     train_df = load_dataset(train_path)
     val_df = load_dataset(val_path)
 
-    # normalized_data, target = separate_and_normalize(training_df, data_name)
     X_train, y_train, X_val, y_val = separate_and_normalize(train_df, val_df, data_names[0])
-    normalized_data = (X_train, y_train, X_val, y_val)
     
-    Model = MultiLayerPerceptron(set_configuration(config_path), normalized_data)
-    print(f'aca {Model}')
+    Y_train_oh = binary_to_one_hot(y_train)
+    Y_val_oh = binary_to_one_hot(y_val)
+
+    mlp = MultiLayerPerceptron(config, input_dim=X_train.shape[1])
+
+    optimizer = set_optimizer(config)
+
+    train_set = {"X": X_train, "y": y_train, "y_oh": Y_train_oh}
+    val_set = {"X": X_val, "y": y_val, "y_oh": Y_val_oh}
+
+    fit(config, mlp, optimizer, train_set, val_set)

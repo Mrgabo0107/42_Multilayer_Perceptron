@@ -3,21 +3,11 @@ from MP.training_mp.layer_mp import Layer
 from MP.math_utils.out_layer import binary_to_one_hot, softmax_crossentropy, softmax_mse, mse, c_crossentropy
 
 class MultiLayerPerceptron:
-    def __init__(self, config, data_tuple):
+    def __init__(self, config, input_dim):
         self.config = config
         self.layers = []
         
-        # Desempaquetamos de forma limpia la tupla que viene del main
-        self.X_train, self.y_train, self.X_val, self.y_val = data_tuple
-
-        self.Y_train_oh = binary_to_one_hot(self.y_train)
-        self.Y_val_oh = binary_to_one_hot(self.y_val)
-        
-        # 1. Input features are passed directly to the first hidden layer.
-        # There is no separate input-layer activation or initializer here.
-        # The first hidden layer receives the raw input and applies its own weights.
-        
-        current_dim = self.X_train.shape[1]  # Number of features in the incoming dataset
+        current_dim = input_dim
         
         # Build hidden layers by iterating through the JSON configuration
         for layer_cfg in self.config.hidden_layers:
@@ -52,19 +42,19 @@ class MultiLayerPerceptron:
             divider
         ]
         
-        # 1. Inspección del objeto Config pasados al MLP
-        if hasattr(self, 'config') or 'config' in globals() or self.layers:
-            # Intentamos extraer de manera segura las variables comunes de tu JSON/Config
-            lr = getattr(self.config, 'learning_rate', 'N/A') if hasattr(self, 'config') else 'N/A'
-            epochs = getattr(self.config, 'epochs', 'N/A') if hasattr(self, 'config') else 'N/A'
-            batch_size = getattr(self.config, 'batch_size', 'N/A') if hasattr(self, 'config') else 'N/A'
+        # 1. Inspección segura de los hiperparámetros esenciales de configuración
+        if hasattr(self, 'config') and self.config is not None:
+            lr = getattr(self.config, 'learning_rate', 'N/A')
+            epochs = getattr(self.config, 'epochs', 'N/A')
+            batch_size = getattr(self.config, 'batch_size', 'N/A')
+            loss_func = getattr(self.config, 'loss', 'N/A')
+            opt_type = getattr(self.config, 'optimizer_type', 'SGD')
             
-            res.append(f"  » Learning Rate: {lr}")
-            res.append(f"  » Epochs:        {epochs}")
-            res.append(f"  » Batch Size:    {batch_size}")
-            # Añadimos información útil sobre el tamaño de los datos en la configuración global
-            res.append(f"  » Train Samples: {self.X_train.shape[0]}")
-            res.append(f"  » Val Samples:   {self.X_val.shape[0]}")
+            res.append(f"  » Optimizer Type: {opt_type.upper()}")
+            res.append(f"  » Learning Rate:  {lr}")
+            res.append(f"  » Epochs:         {epochs}")
+            res.append(f"  » Batch Size:     {batch_size}")
+            res.append(f"  » Loss Function:  {loss_func}")
         else:
             res.append("  » No config object metadata could be fetched.")
             
@@ -72,18 +62,19 @@ class MultiLayerPerceptron:
         res.append(f" DETAILED LAYER ARCHITECTURE & INITIALIZED DATA")
         res.append(divider)
         
-        # 2. Inspección detallada de cada capa
+        # 2. Inspección detallada de la topología de cada capa
         for idx, layer in enumerate(self.layers):
-            layer_type = f"HIDDEN LAYER [{idx + 1}]" if idx < len(self.layers) - 1 else "OUTPUT LAYER"
+            layer_type = f"HIDDEN LAYER [{idx + 1}]" if idx < self.num_layers - 1 else "OUTPUT LAYER"
             res.append(f"● {layer_type}")
-            res.append(str(layer))  # Llama al __str__ detallado de la capa superior
+            res.append(str(layer))  # Llama al __str__ de tu clase Layer
             res.append(sub_divider)
             
-        res.append(f" Total Network Depth: {len(self.layers)} layers.")
+        res.append(f" Total Network Depth: {self.num_layers} layers.")
         res.append(divider)
         
         return "\n".join(res)
-    
+
+
     def forward(self, batch):
         self.layers[0].A_in = batch
         
@@ -94,7 +85,8 @@ class MultiLayerPerceptron:
                 layer.A = layer.compute_activation()
                 self.layers[i + 1].A_in = layer.A
         return self.layers[-1].Z
-    
+
+
     # The parameters has to be general to allow shuffled targets
     def compute_output_gradient(self, target_batch_oh, output_preactiv):
         gradients = {
@@ -107,9 +99,9 @@ class MultiLayerPerceptron:
         if method is None:
             raise ValueError(f"The method to find the output layer gradient '{self.config.loss}' is not allowed")
 
-        # Operación directa, limpia y ultra-rápida sin conversiones internas
         return method(target_batch_oh, output_preactiv)
-    
+
+
     def backward(self, output_gradient):
         dZ = output_gradient
         m = dZ.shape()[0]
@@ -122,3 +114,7 @@ class MultiLayerPerceptron:
                 dA_in = dZ @ layer.W.T
                 previous_layer = self.layers[i - 1]
                 dZ = dA_in * previous_layer.compute_activation_derivative()
+
+    @property
+    def get_layers(self):
+        return self.layers
