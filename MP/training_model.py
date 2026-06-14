@@ -1,8 +1,10 @@
 import pickle
-import pandas as pd
 import sys
 import os
 import json
+import copy
+import numpy as np
+import pandas as pd
 from pathlib import Path
 from MP.training_mp import Config, parser, MultiLayerPerceptron
 from MP.math_utils.out_layer import binary_to_one_hot
@@ -86,8 +88,87 @@ def set_optimizer(config):
     
     return optimizer(config)
 
+
 def fit(config, mlp, optimizer, train_set, val_set):
-    pass
+    def _shuffle_set():
+        return np.random.permutation(index)
+
+    def _get_batch_set(batch_idx):
+        return [train_set["X"][batch_idx], train_set["y_oh"][batch_idx]]
+    
+    def _report(epoch):
+        print(f"epoch {epoch}/{config.epochs} \
+              -- loss: {historic['train_loss'][-1]} \
+              -- val_loss: {historic['val_loss'][-1]}")
+
+        print('actualizando graficas')
+
+    def _its_better(metric):
+        return (config.early_stopping_monitor == 'val_loss' and historic['val_loss'][-1] < metric)\
+        or (config.early_stopping_monitor == 'val_accuracy' and historic['val_accuracy'][-1] > metric)
+    
+
+    num_samples = train_set["X"].shape[0]
+    index = np.arange(num_samples)
+    patiente_counter = 0
+    stopping_metric = None
+    state = None
+    historic = {
+        "train_loss": [], "val_loss": [],
+        "train_accuracy": [], "val_accuracy": []
+        }
+    
+    for epoch in range(config.epochs):
+        shuffled = _shuffle_set()
+        for start_batch in range(0, num_samples, config.batch_size):
+            end_batch = min(start_batch + config.batch_size, num_samples)
+            batch_set = _get_batch_set(shuffled[start_batch:end_batch])
+
+            output_preactiv = mlp.forward(batch_set[0])
+            loss_gradient = mlp.compute_output_gradient(batch_set[1], output_preactiv)
+            mlp.backward(loss_gradient)
+            optimizer.step(mlp.get_layers)
+
+        # Graphics & report
+        train_out_preactiv = mlp.forward(train_set["X"])
+        val_out_preactiv = mlp.forward(val_set["X"])
+
+        train_loss = mlp.compute_output_loss(train_set["y_oh"], train_out_preactiv)
+        val_loss = mlp.compute_output_loss(val_set["y_oh"], val_out_preactiv)
+
+        # accuracy (true postifs)
+        train_acc = MultiLayerPerceptron.compute_accuracy(train_set["y"], train_out_preactiv)
+        val_acc = MultiLayerPerceptron.compute_accuracy(val_set["y"], val_out_preactiv)
+
+        historic["train_loss"].append(train_loss)
+        historic["val_loss"].append(val_loss)
+        historic["train_accuracy"].append(train_acc)
+        historic["val_accuracy"].append(val_acc)
+
+        _report(epoch)
+
+        if config.early_stopping_enabled:
+            if stopping_metric == None:
+                stopping_metric = historic[config.early_stopping_monitor][-1]
+                state = copy.deepcopy(mlp)
+            elif _its_better(stopping_metric):
+                patiente_counter = 0
+                state = copy.deepcopy(mlp)
+                stopping_metric = historic[config.early_stopping_monitor][-1]
+            else:
+                patiente_counter += 1
+                if patiente_counter == config.early_stopping_patience:
+                    return state
+    return mlp
+
+
+def _export_trained(model, config):
+    model_dir = MP_PATH.parent / "models"
+    os.makedirs(model_dir, exist_ok=True)
+    
+    model_path = model_dir / f"{config.model_name}.pkl"
+    with open(model_path, "wb") as f:
+        pickle.dump(model, f)
 
 
 if __name__ == "__main__":
@@ -113,4 +194,6 @@ if __name__ == "__main__":
     train_set = {"X": X_train, "y": y_train, "y_oh": Y_train_oh}
     val_set = {"X": X_val, "y": y_val, "y_oh": Y_val_oh}
 
-    fit(config, mlp, optimizer, train_set, val_set)
+    trained = fit(config, mlp, optimizer, train_set, val_set)
+
+    _export_trained(trained, config)

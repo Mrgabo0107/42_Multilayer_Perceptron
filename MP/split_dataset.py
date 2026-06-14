@@ -10,21 +10,25 @@ from pathlib import Path
 MP_PATH = Path(__file__).resolve().parent
 
 
-def parser():
+def _parser():
     description = """\
     This program reads the file 'data.csv' and splits a portion
     of the data into a training set according to the 'training_rate'
     percentage. The split preserves the class distribution in
     the dataset (stratification).
 
+    The script cleans the data, isolates the scaling parameters (scaler) 
+    using ONLY the training set to prevent data leakage, and exports 
+    ready-to-use matrices (including targets and One-Hot representations) 
+    into a dedicated experiment directory.
+
     Example usage:
 
-        python split_dataset.py --training_rate 80 --seed 42
+        python split_dataset.py --training_rate 60 --seed 42 --name my_experiment
 
-    - 80%% of the samples will go to the training set, 20% to the test set.
-    - Providing a specific 'seed' ensures reproducibility, so that each
-      time you run the script with the same seed, the same samples are
-      selected for training and testing.
+    - 60%% of the samples will go to the training set, 40% to the validation set.
+    - Providing a specific 'seed' ensures reproducibility.
+    - All outputs will be stored inside '../splitted_data/my_experiment/'.
     """
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(description),
@@ -44,9 +48,17 @@ def parser():
         metavar="",
         help="Seed for randomness (default: None)"
     )
+    parser.add_argument(
+        "-n", "--name",
+        type=str,
+        default="splitted",
+        metavar="",
+        help="Name of the experiment folder to save the splitted data (default: 'splitted')"
+    )
 
     args = parser.parse_args()
-    return args.training_rate / 100, args.seed
+    
+    return args.training_rate / 100, args.seed, args.name.strip()
 
 
 def split_data(df, target_col, training_rate, seed=None):
@@ -98,7 +110,7 @@ def save_splitted_data(training_df, validation_df):
 
 if __name__ == "__main__":
     # Get parameters
-    training_rate, seed = parser()
+    training_rate, seed, name = _parser()
 
     # Read csv
     try:

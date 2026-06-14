@@ -1,6 +1,6 @@
 import numpy as np
 from MP.training_mp.layer_mp import Layer
-from MP.math_utils.out_layer import binary_to_one_hot, softmax_crossentropy, softmax_mse, mse, c_crossentropy
+from MP.math_utils.out_layer import softmax, softmax_crossentropy, softmax_mse, mse, c_crossentropy
 
 class MultiLayerPerceptron:
     def __init__(self, config, input_dim):
@@ -114,6 +114,26 @@ class MultiLayerPerceptron:
                 dA_in = dZ @ layer.W.T
                 previous_layer = self.layers[i - 1]
                 dZ = dA_in * previous_layer.compute_activation_derivative()
+
+    def compute_output_loss(self, target_oh, output_preactiv):
+        activ = softmax(output_preactiv)
+
+        losses = {
+            "mse": mse,
+            "categorical_crossentropy": c_crossentropy
+        }
+
+        method = losses.get(self.config.loss)
+
+        if method is None:
+            raise ValueError(f"The method to find loss: '{self.config.loss}' is not allowed")
+        
+        return method(target_oh, activ)
+
+    @staticmethod
+    def compute_accuracy(target, out_preactiv):
+        predictions = np.argmax(out_preactiv, axis=1)
+        return np.mean(predictions == target) * 100
 
     @property
     def get_layers(self):
