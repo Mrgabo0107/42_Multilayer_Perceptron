@@ -13,27 +13,32 @@ MP_PATH = Path(__file__).resolve().parent
 
 def _parser():
     description = """\
-    This program reads the file 'data.csv' and splits a portion
-    of the data into a training set according to the 'training_rate'
-    percentage. The split preserves the class distribution in
-    the dataset (stratification).
+        This program reads a raw dataset file (by default 'data.csv') and splits 
+        a portion of the data into a training set according to the 'training_rate'
+        percentage. The split preserves the class distribution in the dataset 
+        (stratification).
 
-    The script cleans the data, isolates the scaling parameters (scaler) 
-    using ONLY the training set to prevent data leakage, and exports 
-    ready-to-use matrices (including targets and One-Hot representations) 
-    into a dedicated experiment directory.
+        The script cleans the data, isolates the scaling parameters (scaler) 
+        using ONLY the training set to prevent data leakage, and exports 
+        ready-to-use matrices (including targets and One-Hot representations) 
+        into a dedicated experiment directory.
 
-    Additionally, it can perform an Initial Exploratory Data Analysis (EDA)
-    with statistical summaries and visual graphs of the raw dataset.
+        By using the '--raw_name' (-rn) flag, you can specify any other CSV file 
+        located next to the MP folder, allowing you to easily process different 
+        sources, filtered subsets, or variations of the dataset.
 
-    Example usage:
+        Additionally, it can perform an Initial Exploratory Data Analysis (EDA)
+        with statistical summaries and visual graphs of the processed dataset.
 
-        python split_dataset.py --training_rate 60 --seed 42 --name my_experiment --explore
+        Example usage:
 
-    - 60$% of the samples will go to the training set, 40% to the validation set.
-    - Providing a specific 'seed' ensures reproducibility.
-    - All outputs will be stored inside '../splitted_data/my_experiment/'.
-    - The --explore flag will trigger the data visualization and summary.
+            python split_dataset.py --raw_name data.csv --training_rate 80 --seed 42 --name my_experiment
+
+        - The file 'data.csv' will be loaded and processed.
+        - 80%% of the samples will go to the training set, 20% to the validation set.
+        - Providing a specific 'seed' ensures reproducibility.
+        - All outputs will be stored inside '../splitted_data/my_experiment/'.
+        - The --explore (-e) flag will trigger the data visualization and summary.
     """
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(description),
@@ -65,10 +70,16 @@ def _parser():
         action="store_true",
         help="Trigger initial exploratory data analysis (EDA) and render charts (default: False)"
     )
+    parser.add_argument(
+        "--raw_name", "-rn",
+        type=str,
+        default="data.csv",
+        help="Name of the raw CSV file located next to the MP folder (default: data.csv)"
+    )
 
     args = parser.parse_args()
     
-    return args.training_rate / 100, args.seed, args.name.strip(), args.explore
+    return args.training_rate / 100, args.seed, args.name, args.explore, args.raw_name
 
 
 def _split_by_rate(df, target_col, training_rate, seed=None):
@@ -169,13 +180,13 @@ def _report_init_data(formated_data, raw_df):
 
 if __name__ == "__main__":
     # Get parameters
-    training_rate, seed, name, explore = _parser()
+    training_rate, seed, name, explore, raw_name = _parser()
 
     # Read csv
     try:
-        raw_df = pd.read_csv(MP_PATH.parent / "data.csv", header=None)
+        raw_df = pd.read_csv(MP_PATH.parent / raw_name, header=None)
     except FileNotFoundError:
-        print("Put data.csv file next to MP folder")
+        print(f"Put {raw_name} file next to MP folder")
         sys.exit(1)
 
     # Drop ID column (no important information provided):

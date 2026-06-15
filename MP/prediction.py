@@ -120,7 +120,7 @@ def _report(model_name, data_name, target, loss, accuracy):
     print(f" Number of samples processed: {target.shape[0]}")
     print("=" * 55)
     print(f" -> Binary Cross-Entropy Loss : {loss:.6f}")
-    print(f" -> Evaluation Accuracy       : {accuracy * 100:.2f}%")
+    print(f" -> Evaluation Accuracy       : {accuracy:.2f}%")
     print("=" * 55 + "\n")
 
 if __name__ == "__main__":

@@ -7,10 +7,9 @@ name = "MP"
 version = "0.1.0"
 description = "Multilayer Perceptron from scratch - School 42"
 dependencies = [
-    "pandas",
-    "numpy",
+    "pandas>=2.3.3",
+    "numpy>=1.26.4",
     "plotly>=5.15.0",
-    ]
-
+]
 [tool.setuptools]
 packages = ["MP", "MP.math_utils", "MP.training_mp"]

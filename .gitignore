@@ -4,3 +4,4 @@ splitted_data/
 scaler/
 configs/
 *.egg-info/
+corr.html

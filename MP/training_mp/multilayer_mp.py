@@ -1,5 +1,5 @@
 import numpy as np
-from MP.training_mp import Layer
+from MP.training_mp.layer_mp import Layer
 from MP.math_utils import softmax, softmax_crossentropy, softmax_mse, mse, c_crossentropy
 
 class MultiLayerPerceptron:
@@ -104,7 +104,7 @@ class MultiLayerPerceptron:
 
     def backward(self, output_gradient):
         dZ = output_gradient
-        m = dZ.shape()[0]
+        m = dZ.shape[0]
         for i in range(self.num_layers - 1, -1, -1):
             layer = self.layers[i]
             layer.db = np.sum(dZ, axis=0, keepdims=True) / m
@@ -133,7 +133,7 @@ class MultiLayerPerceptron:
     @staticmethod
     def compute_accuracy(target, out_preactiv):
         predictions = np.argmax(out_preactiv, axis=1)
-        return np.mean(predictions == target) * 100
+        return np.mean(predictions == target)
 
     @property
     def get_layers(self):

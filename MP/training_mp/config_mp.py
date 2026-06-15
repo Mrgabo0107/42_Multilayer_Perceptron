@@ -136,7 +136,6 @@ class Config:
         lines.append(f" CONFIGURATION: {self.model_name} ")
         lines.append("=" * 50)
         
-        # 1. Topología
         lines.append("\n[TOPOLOGY]")
         lines.append("  Input Layer: raw input features passed directly to the first hidden layer")
         lines.append("  Hidden Layers Architecture:")
@@ -147,25 +146,36 @@ class Config:
         lines.append(f"  Output Layer Initializer: {self.output_layer_initializer}")
         lines.append("  Output Layer Activation:  softmax (FIXED)")
         
-        # 2. Entrenamiento General
         lines.append("\n[TRAINING PARAMETERS]")
         lines.append(f"  Epochs:                 {self.epochs}")
         lines.append(f"  Batch Size:             {self.batch_size}")
         lines.append(f"  Learning Rate:          {self.learning_rate}")
         lines.append(f"  Loss Function:          {self.loss}")
         
-        # 3. Optimizador Dinámico (Aquí ocurre la magia que pides)
         lines.append(f"  Optimizer Type:         {self.optimizer_type.upper()}")
         if self.optimizer_type == "adam":
             lines.append(f"    -> Adam Beta 1:       {self.adam_beta1}")
             lines.append(f"    -> Adam Beta 2:       {self.adam_beta2}")
             
-        # 4. Early Stopping
         lines.append("\n[EARLY STOPPING]")
         lines.append(f"  Enabled:                {self.early_stopping_enabled}")
         if self.early_stopping_enabled:
             lines.append(f"  Patience:               {self.early_stopping_patience} epochs")
             lines.append(f"  Monitor Metric:         {self.early_stopping_monitor}")
+
+        lines.append("\n[SCALER]")
+        if self.scaler is None:
+            lines.append("  Status:                 NONE (Not fitted yet)")
+        else:
+            mean_shape = self.scaler[0].shape[0]
+            std_shape = self.scaler[1].shape[0]
+            
+            mean_sample = [f"{x:.2f}" for x in self.scaler[0][:3]]
+            std_sample = [f"{x:.2f}" for x in self.scaler[1][:3]]
+            
+            lines.append(f"  Features Detected:      {mean_shape} inputs")
+            lines.append(f"  Mean:          [{', '.join(mean_sample)}...]")
+            lines.append(f"  Std:           [{', '.join(std_sample)}...]") 
             
         lines.append("=" * 50)
         return "\n".join(lines)

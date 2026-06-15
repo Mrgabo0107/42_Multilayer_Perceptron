@@ -11,7 +11,7 @@ def parser():
 
     1. The name of the experiment directory containing the dataset capsule.
        The script will automatically target and load the unifed pickle file
-       'train_val_\{data_name\}.pkl' inside that folder.
+       'train_val_{data_name}.pkl' inside that folder.
     2. The name of the .json configuration file describing the neural
        network architecture and training parameters.
 

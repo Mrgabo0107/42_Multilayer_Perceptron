@@ -6,7 +6,7 @@ import copy
 import numpy as np
 from pathlib import Path
 from MP.training_mp import Config, parser, MultiLayerPerceptron
-from MP.math_utils import sgd, adam
+from MP.math_utils import sgd, adam, graph_performance
 
 
 MP_PATH = Path(__file__).resolve().parent
@@ -68,23 +68,35 @@ def _fit(config, mlp, optimizer, data):
     def _get_batch_set(batch_idx):
         return [train_set["X"][batch_idx], train_set["y_oh"][batch_idx]]
     
+    # def _report(epoch):
+    #     print(f"epoch {epoch + 1}/{config.epochs}"
+    #           f"-- loss: {historic['train_loss'][-1]:.8f}"
+    #           f"-- val_loss: {historic['val_loss'][-1]:.8f}")
+    #     graph_performance(historic, config, False)
+
     def _report(epoch):
-        print(f"epoch {epoch}/{config.epochs} \
-              -- loss: {historic['train_loss'][-1]} \
-              -- val_loss: {historic['val_loss'][-1]}")
+        print(f"epoch {epoch + 1}/{config.epochs}"
+              f"-- loss: {historic['train_loss'][-1]:.8f}"
+              f"-- val_loss: {historic['val_loss'][-1]:.8f}")
 
-        print('actualizando graficas')
 
-    def _its_better(metric):
-        return (config.early_stopping_monitor == 'val_loss' and historic['val_loss'][-1] < metric)\
-        or (config.early_stopping_monitor == 'val_accuracy' and historic['val_accuracy'][-1] > metric)
+
+    def _its_better(current_val, best_val):
+        if config.early_stopping_monitor == 'val_loss':
+            return current_val < best_val
+        elif config.early_stopping_monitor == 'val_accuracy':
+            return current_val > best_val
+        return False
     
+
     train_set, val_set = data
     num_samples = train_set["X"].shape[0]
     index = np.arange(num_samples)
     patiente_counter = 0
-    stopping_metric = None
-    state = None
+    best_metric = float('inf') if config.early_stopping_monitor == 'val_loss' else float('-inf')
+    best_epoch = 0
+    best_state = copy.deepcopy(mlp)
+
     historic = {
         "train_loss": [], "val_loss": [],
         "train_accuracy": [], "val_accuracy": []
@@ -120,22 +132,36 @@ def _fit(config, mlp, optimizer, data):
         _report(epoch)
 
         if config.early_stopping_enabled:
-            if stopping_metric == None:
-                stopping_metric = historic[config.early_stopping_monitor][-1]
-                state = copy.deepcopy(mlp)
-            elif _its_better(stopping_metric):
+            current_metric = historic[config.early_stopping_monitor][-1]
+            
+            if _its_better(current_metric, best_metric):
+                best_metric = current_metric
+                best_epoch = epoch
+                best_state = copy.deepcopy(mlp)
                 patiente_counter = 0
-                state = copy.deepcopy(mlp)
-                stopping_metric = historic[config.early_stopping_monitor][-1]
             else:
                 patiente_counter += 1
-                if patiente_counter == config.early_stopping_patience:
-                    return state
+                if patiente_counter >= config.early_stopping_patience:
+                    print(f"\n[EARLY STOPPING] train stopped at epoch: {epoch + 1}.")
+                    print(f"[EARLY STOPPING] best model in epoch: {best_epoch + 1} "
+                          f"with {config.early_stopping_monitor}: {best_metric:.8f}\n")
+                    return historic, best_state
+
+    # If training completes with early stopping enabled,
+    # return the best model checkpoint instead of the final one.
+    if config.early_stopping_enabled:
+        print(f"\n[TRAINING END] Completed all {config.epochs} epochs.")
+        print(
+            f"[TRAINING END] Returning the best saved model (Epoch {best_epoch}) "
+            f"with {config.early_stopping_monitor}: {best_metric:.8f}\n"
+        )
+        return historic, best_state
+
     return historic, mlp
 
 
 def _export_trained(historic, model, config):
-    model_dir = MP_PATH.parent / "models"
+    model_dir = MP_PATH.parent / "models" / config.model_name
     os.makedirs(model_dir, exist_ok=True)
     
     model_path = model_dir / f"{config.model_name}.pkl"
@@ -145,21 +171,26 @@ def _export_trained(historic, model, config):
     with open(historic_path, "wb") as f:
         pickle.dump(historic, f)
 
+
 if __name__ == "__main__":
+    np.random.seed(120)
     data_name, config_name = parser()
     capsule_path = MP_PATH.parent / "splitted_data" / data_name / f"train_val_{data_name}.pkl"
     scaler_path = MP_PATH.parent / "splitted_data" / data_name / f"scaler_{data_name}.pkl"
     config_path = MP_PATH.parent / "configs" / config_name if config_name else None
     
     data = _load_dataset(capsule_path)
-
+    print (data)
     config =  _set_configuration(config_path)
     config.scaler = _load_scaler(scaler_path)
+    print(config)
 
     mlp = MultiLayerPerceptron(config, data[0]["X"].shape[1])
 
     optimizer = _set_optimizer(config)
 
     historic, trained = _fit(config, mlp, optimizer, data)
+
+    graph_performance(historic, config)
 
     _export_trained(historic, trained, config)
