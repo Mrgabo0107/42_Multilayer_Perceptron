@@ -6,6 +6,7 @@ import os
 import pickle
 import sys
 from pathlib import Path
+from MP.math_utils.out_layer import binary_to_one_hot
 
 MP_PATH = Path(__file__).resolve().parent
 
@@ -22,13 +23,17 @@ def _parser():
     ready-to-use matrices (including targets and One-Hot representations) 
     into a dedicated experiment directory.
 
+    Additionally, it can perform an Initial Exploratory Data Analysis (EDA)
+    with statistical summaries and visual graphs of the raw dataset.
+
     Example usage:
 
-        python split_dataset.py --training_rate 60 --seed 42 --name my_experiment
+        python split_dataset.py --training_rate 60 --seed 42 --name my_experiment --explore
 
-    - 60%% of the samples will go to the training set, 40% to the validation set.
+    - 60$% of the samples will go to the training set, 40% to the validation set.
     - Providing a specific 'seed' ensures reproducibility.
     - All outputs will be stored inside '../splitted_data/my_experiment/'.
+    - The --explore flag will trigger the data visualization and summary.
     """
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(description),
@@ -51,17 +56,22 @@ def _parser():
     parser.add_argument(
         "-n", "--name",
         type=str,
-        default="splitted",
+        default="default",
         metavar="",
-        help="Name of the experiment folder to save the splitted data (default: 'splitted')"
+        help="Name of the experiment folder to save the splitted data (default: 'default')"
+    )
+    parser.add_argument(
+        "-e", "--explore",
+        action="store_true",
+        help="Trigger initial exploratory data analysis (EDA) and render charts (default: False)"
     )
 
     args = parser.parse_args()
     
-    return args.training_rate / 100, args.seed, args.name.strip()
+    return args.training_rate / 100, args.seed, args.name.strip(), args.explore
 
 
-def split_data(df, target_col, training_rate, seed=None):
+def _split_by_rate(df, target_col, training_rate, seed=None):
     # If a seed is provided, the randomness in NumPy is fixed to extract
     # the same samples in training_data and test_data.
     if seed is not None:
@@ -97,44 +107,90 @@ def split_data(df, target_col, training_rate, seed=None):
     return training_df, test_df
 
 
-def save_splitted_data(training_df, validation_df):
-    os.makedirs(MP_PATH.parent / "splitted_data", exist_ok=True)
+def _save_formated_data(name, scaler, train_val_set):
+    experiment_dir = MP_PATH.parent / "splitted_data" / name
+    os.makedirs(experiment_dir, exist_ok=True)
 
-    with open(MP_PATH.parent / "splitted_data" / "training_data.pkl", "wb") as f:
-        pickle.dump(training_df, f)
+    with open(experiment_dir / f"scaler_{name}.pkl", "wb") as f:
+        pickle.dump(scaler, f)
 
-    # Ahora se guarda explícitamente como validation_data.pkl
-    with open(MP_PATH.parent / "splitted_data" / "validation_data.pkl", "wb") as f:
-        pickle.dump(validation_df, f)
+    with open(experiment_dir / f"train_val_{name}.pkl", "wb") as f:
+        pickle.dump(train_val_set, f)
+
+    print(f"> Capsule '{name}' successfully generated inside '../splitted_data/{name}/'")
+
+
+def _format_and_save(df, training_df, validation_df, name):
+    target_col = df.columns[0]
+
+    # Separation Train
+    train_target = training_df[target_col].to_numpy()
+    train_target_oh = binary_to_one_hot(train_target)
+    train_data = training_df.drop(target_col, axis=1).to_numpy()
+
+    # Separation Validation
+    val_target = validation_df[target_col].to_numpy()
+    val_target_oh = binary_to_one_hot(val_target)
+    val_data = validation_df.drop(target_col, axis=1).to_numpy()
+
+    # Defining scaler
+    mean = train_data.mean(axis=0)
+    std = train_data.std(axis=0)
+    
+    # Protection agains no variable data
+    std[std == 0] = 1
+    
+    scaler = (mean, std)
+
+    # Scalign 
+    train_data_normalized = (train_data - mean) / std
+    val_data_normalized = (val_data - mean) / std
+
+    train_val_set = {
+        "train" : {
+            "X" : train_data_normalized,
+            "y" : train_target,
+            "y_oh" : train_target_oh
+        },
+        "val" : {
+            "X" : val_data_normalized,
+            "y" : val_target,
+            "y_oh" : val_target_oh
+        }
+    }
+    _save_formated_data(name, scaler, train_val_set)
+
+    return train_val_set
+
+
+def _report_init_data(formated_data, raw_df):
+    pass
 
 
 if __name__ == "__main__":
     # Get parameters
-    training_rate, seed, name = _parser()
+    training_rate, seed, name, explore = _parser()
 
     # Read csv
     try:
-        df = pd.read_csv(MP_PATH.parent / "data.csv", header=None)
+        raw_df = pd.read_csv(MP_PATH.parent / "data.csv", header=None)
     except FileNotFoundError:
         print("Put data.csv file next to MP folder")
         sys.exit(1)
 
-    # Check for empty entries (I leave it commented out since the dataset
-    # provided by the school has no empty values, and these lines only serves
-    # to confirm that nothing has changed).
-    # print(df.isna().sum())
-    # print(df.isnull().sum())
-
     # Drop ID column (no important information provided):
-    df = df.drop(df.columns[0], axis=1)
+    df = raw_df.drop(raw_df.columns[0], axis=1)
 
     # Convert the target variable from categorical to binary B = 0 & M = 1:
     df[df.columns[0]] = df[df.columns[0]].map({'M': 1, 'B': 0})
 
     # Split data according to training_rate, taking care to save the proportion
     # in the target classes:
-    training_df, validation_df = split_data(df, df.columns[0], training_rate, seed)
+    training_df, validation_df = _split_by_rate(df, df.columns[0], training_rate, seed)
 
-    save_splitted_data(training_df, validation_df)
+    formated_data = _format_and_save(df, training_df, validation_df, name)
 
-    print(training_df.head(10), "\n" , validation_df.head(10))
+    if explore:
+        _report_init_data(formated_data, raw_df)
+
+

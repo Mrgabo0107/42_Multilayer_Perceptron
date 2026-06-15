@@ -1,6 +1,6 @@
 import numpy as np
-from MP.training_mp.layer_mp import Layer
-from MP.math_utils.out_layer import softmax, softmax_crossentropy, softmax_mse, mse, c_crossentropy
+from MP.training_mp import Layer
+from MP.math_utils import softmax, softmax_crossentropy, softmax_mse, mse, c_crossentropy
 
 class MultiLayerPerceptron:
     def __init__(self, config, input_dim):

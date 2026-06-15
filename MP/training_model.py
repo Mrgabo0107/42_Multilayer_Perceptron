@@ -4,17 +4,15 @@ import os
 import json
 import copy
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from MP.training_mp import Config, parser, MultiLayerPerceptron
-from MP.math_utils.out_layer import binary_to_one_hot
-from MP.math_utils.optimizers import sgd, adam
+from MP.math_utils import sgd, adam
 
 
 MP_PATH = Path(__file__).resolve().parent
 
 
-def set_configuration(path):
+def _set_configuration(path):
     if path:
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -27,55 +25,29 @@ def set_configuration(path):
         return Config()
 
 
-def load_dataset(path):
+def _load_dataset(data_path):
     try:
-        with open(path, "rb") as f:
-            df = pickle.load(f)
-            if not isinstance(df, pd.DataFrame):
-                raise TypeError(f"The file {path.name} does not contain a pandas dataframe")
-    except TypeError as e:
-        print(e)
-        sys.exit(1)
+        with open(data_path, "rb") as f:
+            data_capsule = pickle.load(f)
     except FileNotFoundError:
-        print(f"Error opening data from {path.name}. Make sure you have executed split_dataset.py")
+        print(f"Error opening data from {data_path}. Make sure you have executed split_dataset.py")
         sys.exit(1)
-    return df
+
+    return (data_capsule["train"], data_capsule["val"])
 
 
-def separate_and_normalize(train_df, val_df, data_name):
-    def save_scaler(mean, std):
-        os.makedirs(MP_PATH.parent / "scaler", exist_ok=True)
-        with open(MP_PATH.parent / "scaler" / (Path(data_name).stem + "_scale_values.pkl"), "wb") as f:
-            pickle.dump((mean, std), f)
-    
-    target_col = train_df.columns[0]
+def _load_scaler(scaler_path):
+    try:
+        with open(scaler_path, "rb") as f:
+            scaler = pickle.load(f)
+    except FileNotFoundError:
+        print(f"Error opening scaler from {scaler_path}. Make sure you have executed split_dataset.py")
+        sys.exit(1)
 
-    # Separación Train
-    train_target = train_df[target_col].to_numpy()
-    train_data = train_df.drop(target_col, axis=1).to_numpy()
-
-    # Separación Validation
-    val_target = val_df[target_col].to_numpy()
-    val_data = val_df.drop(target_col, axis=1).to_numpy()
-
-    # Cálculo de métricas ÚNICAMENTE con los datos de Entrenamiento
-    mean = train_data.mean(axis=0)
-    std = train_data.std(axis=0)
-    
-    # Protección contra datos sin variación
-    std[std == 0] = 1
-
-    # Escalamiento de ambos conjuntos con los mismos parámetros de entrenamiento
-    train_data_normalized = (train_data - mean) / std
-    val_data_normalized = (val_data - mean) / std
-
-    # Guardar scaler del entrenamiento para el programa de testing posterior
-    save_scaler(mean, std)
-
-    return train_data_normalized, train_target, val_data_normalized, val_target
+    return scaler
 
 
-def set_optimizer(config):
+def _set_optimizer(config):
     optimizers = {
         "sgd" : sgd,
         "adam": adam
@@ -89,7 +61,7 @@ def set_optimizer(config):
     return optimizer(config)
 
 
-def fit(config, mlp, optimizer, train_set, val_set):
+def _fit(config, mlp, optimizer, data):
     def _shuffle_set():
         return np.random.permutation(index)
 
@@ -107,7 +79,7 @@ def fit(config, mlp, optimizer, train_set, val_set):
         return (config.early_stopping_monitor == 'val_loss' and historic['val_loss'][-1] < metric)\
         or (config.early_stopping_monitor == 'val_accuracy' and historic['val_accuracy'][-1] > metric)
     
-
+    train_set, val_set = data
     num_samples = train_set["X"].shape[0]
     index = np.arange(num_samples)
     patiente_counter = 0
@@ -159,41 +131,35 @@ def fit(config, mlp, optimizer, train_set, val_set):
                 patiente_counter += 1
                 if patiente_counter == config.early_stopping_patience:
                     return state
-    return mlp
+    return historic, mlp
 
 
-def _export_trained(model, config):
+def _export_trained(historic, model, config):
     model_dir = MP_PATH.parent / "models"
     os.makedirs(model_dir, exist_ok=True)
     
     model_path = model_dir / f"{config.model_name}.pkl"
+    historic_path = model_dir / f"historic_{config.model_name}.pkl"
     with open(model_path, "wb") as f:
         pickle.dump(model, f)
-
+    with open(historic_path, "wb") as f:
+        pickle.dump(historic, f)
 
 if __name__ == "__main__":
-    data_names, config_name = parser()
-    train_path = MP_PATH.parent / "splitted_data" / data_names[0]
-    val_path = MP_PATH.parent / "splitted_data" / data_names[1]
+    data_name, config_name = parser()
+    capsule_path = MP_PATH.parent / "splitted_data" / data_name / f"train_val_{data_name}.pkl"
+    scaler_path = MP_PATH.parent / "splitted_data" / data_name / f"scaler_{data_name}.pkl"
     config_path = MP_PATH.parent / "configs" / config_name if config_name else None
     
-    config =  set_configuration(config_path)
-    
-    train_df = load_dataset(train_path)
-    val_df = load_dataset(val_path)
+    data = _load_dataset(capsule_path)
 
-    X_train, y_train, X_val, y_val = separate_and_normalize(train_df, val_df, data_names[0])
-    
-    Y_train_oh = binary_to_one_hot(y_train)
-    Y_val_oh = binary_to_one_hot(y_val)
+    config =  _set_configuration(config_path)
+    config.scaler = _load_scaler(scaler_path)
 
-    mlp = MultiLayerPerceptron(config, input_dim=X_train.shape[1])
+    mlp = MultiLayerPerceptron(config, data[0]["X"].shape[1])
 
-    optimizer = set_optimizer(config)
+    optimizer = _set_optimizer(config)
 
-    train_set = {"X": X_train, "y": y_train, "y_oh": Y_train_oh}
-    val_set = {"X": X_val, "y": y_val, "y_oh": Y_val_oh}
+    historic, trained = _fit(config, mlp, optimizer, data)
 
-    trained = fit(config, mlp, optimizer, train_set, val_set)
-
-    _export_trained(trained, config)
+    _export_trained(historic, trained, config)

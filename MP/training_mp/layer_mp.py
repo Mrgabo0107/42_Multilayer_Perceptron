@@ -1,6 +1,5 @@
 import numpy as np
-from MP.math_utils.activations import relu, sigmoid, tan_h, relu_deriv, sigmoid_deriv, tan_h_deriv
-from MP.math_utils.out_layer import softmax
+from MP.math_utils import softmax, relu, sigmoid, tan_h, relu_deriv, sigmoid_deriv, tan_h_deriv
 
 SHOW_MATRICES_DEBUG = False
 

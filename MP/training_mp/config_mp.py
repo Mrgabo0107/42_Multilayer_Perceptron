@@ -126,6 +126,9 @@ class Config:
                 print(f"Warning: Layer {i} invalid initializer '{layer['initializer']}'. Falling back to 'heUniform'.")
                 layer["initializer"] = "heUniform"
 
+        # === slot for scaler nedded in prediction ===
+        self.scaler = None
+
     def __str__(self):
         """Genera una representación en string limpia y organizada de la configuración actual."""
         lines = []
