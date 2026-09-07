@@ -63,7 +63,7 @@ def _load_all(model_name, data_name):
             raise TypeError(f"The file '{model_path.name}' is not a valid MultiLayerPerceptron instance.")
             
     except FileNotFoundError:
-        print(f"Error: Model file '{model_path.name}' not found inside '../models/'.")
+        print(f"Error: Model file '{model_path.name}' not found inside '../models/', Did you create any models using `training_model.py`?")
         sys.exit(1)
     except TypeError as e:
         print(f"Error: {e}")
