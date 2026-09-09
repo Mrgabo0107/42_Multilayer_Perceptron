@@ -96,10 +96,8 @@ def _process_and_scale_dataset(raw_df, scaler):
 
     raw = df.drop(df.columns[0], axis=1).to_numpy()
 
-    # Recuperar parámetros del scaler interno de la configuración del modelo
     mean, std = scaler
 
-    # Re-escalar en caliente usando estrictamente los parámetros de entrenamiento
     scaled = (raw - mean) / std
 
     return scaled, target
