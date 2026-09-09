@@ -174,8 +174,8 @@ def _format_and_save(df, training_df, validation_df, name):
     return train_val_set
 
 
-def _report_init_data(formated_data, raw_df):
-    pass
+def _report_init_data(formated_data):
+    print(formated_data)
 
 
 if __name__ == "__main__":
@@ -202,6 +202,6 @@ if __name__ == "__main__":
     formated_data = _format_and_save(df, training_df, validation_df, name)
 
     if explore:
-        _report_init_data(formated_data, raw_df)
+        _report_init_data(formated_data)
 
 

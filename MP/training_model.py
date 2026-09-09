@@ -180,7 +180,6 @@ if __name__ == "__main__":
     config_path = MP_PATH.parent / "configs" / config_name if config_name else None
     
     data = _load_dataset(capsule_path)
-    print (data)
     config =  _set_configuration(config_path)
     config.scaler = _load_scaler(scaler_path)
     print(config)
