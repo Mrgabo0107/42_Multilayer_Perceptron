@@ -69,7 +69,12 @@ def _fit(config, mlp, optimizer, data):
         return [train_set["X"][batch_idx], train_set["y_oh"][batch_idx]]
     
 
-    def _report(epoch):
+    def _report(epoch, early_stopping_monitor):
+        if early_stopping_monitor == "val_accuracy":
+            print(f"epoch {epoch + 1}/{config.epochs}"
+                f"-- accuracy: {historic['train_accuracy'][-1]:.8f}"
+                f"-- val_accuracy: {historic['val_accuracy'][-1]:.8f}")
+
         print(f"epoch {epoch + 1}/{config.epochs}"
               f"-- loss: {historic['train_loss'][-1]:.8f}"
               f"-- val_loss: {historic['val_loss'][-1]:.8f}")
@@ -124,7 +129,7 @@ def _fit(config, mlp, optimizer, data):
         historic["train_accuracy"].append(train_acc)
         historic["val_accuracy"].append(val_acc)
 
-        _report(epoch)
+        _report(epoch, config.early_stopping_monitor)
 
         if config.early_stopping_enabled:
             current_metric = historic[config.early_stopping_monitor][-1]
