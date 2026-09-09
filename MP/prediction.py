@@ -54,7 +54,8 @@ def _load_all(model_name, data_name):
     models_dir = MP_PATH.parent / "models"
     test_data_dir = MP_PATH.parent / "test_data"
 
-    model_path = models_dir / f"{model_name}.pkl"
+    model_path = models_dir / f"{model_name}/" / f"{model_name}.pkl"
+    print(model_path)
     try:
         with open(model_path, "rb") as f:
             mlp = pickle.load(f)
