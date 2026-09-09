@@ -68,11 +68,6 @@ def _fit(config, mlp, optimizer, data):
     def _get_batch_set(batch_idx):
         return [train_set["X"][batch_idx], train_set["y_oh"][batch_idx]]
     
-    # def _report(epoch):
-    #     print(f"epoch {epoch + 1}/{config.epochs}"
-    #           f"-- loss: {historic['train_loss'][-1]:.8f}"
-    #           f"-- val_loss: {historic['val_loss'][-1]:.8f}")
-    #     graph_performance(historic, config, False)
 
     def _report(epoch):
         print(f"epoch {epoch + 1}/{config.epochs}"
