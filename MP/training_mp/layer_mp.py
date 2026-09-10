@@ -92,7 +92,7 @@ class Layer:
         activations = {
             "relu": relu,
             "sigmoid": sigmoid,
-            "tan_h": tan_h,
+            "tanh": tan_h,
             "softmax": softmax
         }
 
@@ -107,7 +107,7 @@ class Layer:
         derivates = {
             "relu": relu_deriv,
             "sigmoid": sigmoid_deriv,
-            "tan_h": tan_h_deriv,
+            "tanh": tan_h_deriv,
         }
 
         derivate = derivates.get(self.activation_name)
