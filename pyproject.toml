@@ -11,5 +11,10 @@ dependencies = [
     "numpy>=1.26.4",
     "plotly>=5.15.0",
 ]
+[project.scripts]
+mlp_split = "MP.split_dataset:main"
+mlp_training = "MP.training_model:main"
+mlp_test = "MP.prediction:main"
+
 [tool.setuptools]
 packages = ["MP", "MP.math_utils", "MP.training_mp"]

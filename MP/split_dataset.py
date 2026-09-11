@@ -177,8 +177,7 @@ def _format_and_save(df, training_df, validation_df, name):
 def _report_init_data(formated_data):
     print(formated_data)
 
-
-if __name__ == "__main__":
+def main():
     # Get parameters
     training_rate, seed, name, explore, raw_name = _parser()
 
@@ -204,4 +203,7 @@ if __name__ == "__main__":
     if explore:
         _report_init_data(formated_data)
 
+
+if __name__ == "__main__":
+    main()
 

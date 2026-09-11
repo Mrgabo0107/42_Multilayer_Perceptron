@@ -172,7 +172,7 @@ def _export_trained(historic, model, config):
         pickle.dump(historic, f)
 
 
-if __name__ == "__main__":
+def main():
     np.random.seed(120)
     data_name, config_name = parser()
     capsule_path = MP_PATH.parent / "splitted_data" / data_name / f"train_val_{data_name}.pkl"
@@ -193,3 +193,6 @@ if __name__ == "__main__":
     graph_performance(historic, config)
 
     _export_trained(historic, trained, config)
+
+if __name__ == "__main__":
+    main()

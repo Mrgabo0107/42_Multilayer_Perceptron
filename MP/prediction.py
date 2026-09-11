@@ -122,7 +122,7 @@ def _report(model_name, data_name, target, loss, accuracy):
     print(f" -> Evaluation Accuracy       : {accuracy:.2f}%")
     print("=" * 55 + "\n")
 
-if __name__ == "__main__":
+def main():
     model_name, data_name = _parser()
 
     mlp, raw_df = _load_all(model_name, data_name)
@@ -136,3 +136,7 @@ if __name__ == "__main__":
     accuracy = MultiLayerPerceptron.compute_accuracy(target, preactiv)
 
     _report(model_name, data_name, target, loss, accuracy)
+
+if __name__ == "__main__":
+    main()
+

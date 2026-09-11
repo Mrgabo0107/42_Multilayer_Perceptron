@@ -5,8 +5,8 @@ set -e
 
 # 1. Get the absolute path of the directory where this script resides (MP/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Define project root (one level up from MP/)
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# # Define project root (one level up from MP/)
+ROOT_DIR="$(cd "$SCRIPT_DIR/" && pwd)"
 
 echo "Initializing environment in project root: $ROOT_DIR"
 
