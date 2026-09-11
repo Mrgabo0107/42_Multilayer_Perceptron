@@ -1,0 +1,652 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\hypersetup{
+    hidelinks
+}
+\usepackage{parskip}
+\usepackage{booktabs}
+
+\title{\textbf{Practical Step-by-Step Example: MLP Forward,\\ Backward \& Adam Update}}
+\author{\textbf{Reference Material for Defense}\\ Multilayer Perceptron Project}
+\date{September 11, 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Architecture \& Initial Setup}
+
+\subsection*{Network Topology}
+\begin{itemize}
+    \item \textbf{Input Layer ($l=0$):} $n_0 = 4$ features.
+    \item \textbf{Hidden Layer ($l=1$):} $n_1 = 3$ neurons (Activation: ReLU).
+    \item \textbf{Output Layer ($l=2$):} $n_2 = 2$ neurons (Activation: Softmax).
+    \item \textbf{Batch Size ($m$):} 2 normalized samples.
+\end{itemize}
+
+\subsection*{Initial Data Matrices}
+
+Input Matrix $X = A^0$ ($4 \times 2$):
+\[
+X = A^0 =
+\begin{bmatrix}
+0.5 & -0.2 \\
+0.8 & 0.4 \\
+-0.1 & 0.9 \\
+0.3 & -0.6
+\end{bmatrix}
+\]
+
+We consider two samples, each with four features, in order to illustrate the complete process using a small mini-batch. The process for a single sample would be analogous, starting with $A^0$ represented as a $4 \times 1$ column vector.
+
+Layer 1 Parameters ($W^1 \in \mathbb{R}^{3\times4}$, $b^1 \in \mathbb{R}^{3\times1}$):
+\[
+W^1 =
+\begin{bmatrix}
+0.35 & -0.50 & 0.20 & -0.10 \\
+-0.25 & 0.40 & -0.30 & 0.15 \\
+0.10 & 0.05 & 0.60 & -0.45
+\end{bmatrix}, \quad
+b^1 =
+\begin{bmatrix} 0.0 \\ 0.0 \\ 0.0 \end{bmatrix}
+\]
+
+Layer 2 Parameters ($W^2 \in \mathbb{R}^{2\times3}$, $b^2 \in \mathbb{R}^{2\times1}$):
+\[
+W^2 =
+\begin{bmatrix}
+0.40 & -0.30 & 0.50 \\
+-0.10 & 0.60 & -0.20
+\end{bmatrix}, \quad
+b^2 =
+\begin{bmatrix} 0.0 \\ 0.0 \end{bmatrix}
+\]
+
+Target Labels $Y$ (One-Hot, $2 \times 2$):
+\[
+Y =
+\begin{bmatrix}
+1 & 0 \\
+0 & 1
+\end{bmatrix}
+\]
+
+\newpage
+\section{Step 1: Forward Pass}
+
+\subsection{Layer 1: Pre-activations \texorpdfstring{$Z^1$}{Z1} and Activations \texorpdfstring{$A^1$}{A1}}
+
+To process the mini-batch of size $m=2$, we compute the matrix multiplication $W^1 A^0$ and add the bias vector $b^1$ via broadcasting:
+\[
+Z^1 = W^1 A^0 + b^1
+\]
+
+Substituting the numerical matrices:
+\[
+Z^1 = \begin{bmatrix} 0.35 & -0.50 & 0.20 & -0.10 \\ -0.25 & 0.40 & -0.30 & 0.15 \\ 0.10 & 0.05 & 0.60 & -0.45 \end{bmatrix} \begin{bmatrix} 0.5 & -0.2 \\ 0.8 & 0.4 \\ -0.1 & 0.9 \\ 0.3 & -0.6 \end{bmatrix} + \begin{bmatrix} 0.0 \\ 0.0 \\ 0.0 \end{bmatrix}
+\]
+
+Evaluating each element $(Z^1)_{ij}$:
+
+\textbf{Sample 1 (Column 1):}
+\begin{align*}
+Z^1_{11} &= (0.35)(0.5) + (-0.50)(0.8) + (0.20)(-0.1) + (-0.10)(0.3) = -0.275 \\
+Z^1_{21} &= (-0.25)(0.5) + (0.40)(0.8) + (-0.30)(-0.1) + (0.15)(0.3) = 0.270 \\
+Z^1_{31} &= (0.10)(0.5) + (0.05)(0.8) + (0.60)(-0.1) + (-0.45)(0.3) = -0.105
+\end{align*}
+
+\textbf{Sample 2 (Column 2):}
+\begin{align*}
+Z^1_{12} &= (0.35)(-0.2) + (-0.50)(0.4) + (0.20)(0.9) + (-0.10)(-0.6) = -0.030 \\
+Z^1_{22} &= (-0.25)(-0.2) + (0.40)(0.4) + (-0.30)(0.9) + (0.15)(-0.6) = -0.150 \\
+Z^1_{32} &= (0.10)(-0.2) + (0.05)(0.4) + (0.60)(0.9) + (-0.45)(-0.6) = 0.810
+\end{align*}
+
+Therefore,
+\[
+Z^1 =
+\begin{bmatrix}
+-0.275 & -0.030 \\
+0.270 & -0.150 \\
+-0.105 & 0.810
+\end{bmatrix}
+\]
+
+Next, we apply the element-wise Rectified Linear Unit activation function:
+\[
+\text{ReLU}(z) = \max(0, z)
+\]
+
+Thus,
+\[
+A^1 = \text{ReLU}(Z^1)
+\]
+\[
+A^1 = \begin{bmatrix} \max(0, -0.275) & \max(0, -0.030) \\ \max(0, 0.270) & \max(0, -0.150) \\ \max(0, -0.105) & \max(0, 0.810) \end{bmatrix}
+\]
+and therefore,
+\[
+A^1 =
+\begin{bmatrix}
+0.000 & 0.000 \\
+0.270 & 0.000 \\
+0.000 & 0.810
+\end{bmatrix}
+\]
+
+Notice how ReLU deactivates negative inputs by setting them to zero. This produces a sparse representation in the hidden layer. In this example, the non-zero activations are $A^1_{21}$ and $A^1_{32}$.
+
+\subsection{Layer 2: Pre-activations \texorpdfstring{$Z^2$}{Z2} and Output \texorpdfstring{$A^2$}{A2}}
+
+The second layer receives the hidden-layer activations $A^1$ as input. The pre-activation matrix is computed as
+\[
+Z^2 = W^2 A^1 + b^2
+\]
+
+Substituting the numerical matrices:
+\[
+Z^2 = \begin{bmatrix} 0.40 & -0.30 & 0.50 \\ -0.10 & 0.60 & -0.20 \end{bmatrix} \begin{bmatrix} 0.000 & 0.000 \\ 0.270 & 0.000 \\ 0.000 & 0.810 \end{bmatrix} + \begin{bmatrix} 0.0 \\ 0.0 \end{bmatrix}
+\]
+
+Evaluating each element:
+\begin{align*}
+Z^2_{11} &= (0.40)(0.000) + (-0.30)(0.270) + (0.50)(0.000) = -0.081 \\
+Z^2_{21} &= (-0.10)(0.000) + (0.60)(0.270) + (-0.20)(0.000) = 0.162 \\
+Z^2_{12} &= (0.40)(0.000) + (-0.30)(0.000) + (0.50)(0.810) = 0.405 \\
+Z^2_{22} &= (-0.10)(0.000) + (0.60)(0.000) + (-0.20)(0.810) = -0.162
+\end{align*}
+
+Therefore,
+\[
+Z^2 =
+\begin{bmatrix}
+-0.081 & 0.405 \\
+0.162 & -0.162
+\end{bmatrix}
+\]
+
+The output layer uses the Softmax activation function. For each sample (column), Softmax converts the logits into probabilities:
+\[
+A^2_{ki} = \frac{\exp(Z^2_{ki})}{\sum_{j=1}^{n_2} \exp(Z^2_{ji})}
+\]
+
+\textbf{For Sample 1:}
+\[
+A^2_{11} = \frac{e^{-0.081}}{e^{-0.081}+e^{0.162}} \approx 0.4395, \qquad
+A^2_{21} = \frac{e^{0.162}}{e^{-0.081}+e^{0.162}} \approx 0.5605
+\]
+
+\textbf{For Sample 2:}
+\[
+A^2_{12} = \frac{e^{0.405}}{e^{0.405}+e^{-0.162}} \approx 0.6381, \qquad
+A^2_{22} = \frac{e^{-0.162}}{e^{0.405}+e^{-0.162}} \approx 0.3619
+\]
+
+Thus,
+\[
+A^2 \approx
+\begin{bmatrix}
+0.4395 & 0.6381 \\
+0.5605 & 0.3619
+\end{bmatrix}
+\]
+
+Each column sums to approximately 1, as expected for a Softmax output.
+
+\subsection{Loss Computation (Categorical Cross-Entropy)}
+
+For a mini-batch of $m=2$ samples, the categorical cross-entropy loss is
+\[
+L = -\frac{1}{m}\sum_{i=1}^{m}\sum_{k=1}^{n_2} Y_{ki}\ln(A^2_{ki})
+\]
+
+Since the target labels are one-hot encoded,
+\[
+Y = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},
+\]
+the loss becomes
+\[
+L = -\frac{1}{2}\left[\ln(A^2_{11}) + \ln(A^2_{22})\right]
+\]
+
+Using the numerical values,
+\[
+L = -\frac{1}{2}\left[\ln(0.4395) + \ln(0.3619)\right] = -\frac{1}{2}\left[(-0.8220) + (-1.0163)\right] = -\frac{1}{2}(-1.8383)
+\]
+
+Therefore, the initial mini-batch loss is
+\[
+\boxed{L \approx 0.9192}
+\]
+
+\newpage
+\section{Step 2: Backward Pass \& Chain Rule}
+
+\subsection{Proof: Simplification of Softmax with Categorical Cross-Entropy}
+
+A common question during defense is why the gradient at the output layer simplifies to the straightforward subtraction $\delta^2 = A^2 - Y$.
+
+Let $z_i$ be the $i$-th pre-activation logit, $a_k = \dfrac{e^{z_k}}{\sum_j e^{z_j}}$ the Softmax output, and $Y_k$ the true one-hot target.
+
+\textbf{1. Derivative of Softmax} $\left(\frac{\partial a_k}{\partial z_i}\right)$
+
+Using the quotient rule on the Softmax definition:
+\begin{itemize}
+    \item Case $k = i$: $\quad \dfrac{\partial a_i}{\partial z_i} = a_i(1-a_i)$
+    \item Case $k \neq i$: $\quad \dfrac{\partial a_k}{\partial z_i} = -a_k a_i$
+\end{itemize}
+
+Combining both cases using the Kronecker delta $\delta_{ki}$:
+\[
+\frac{\partial a_k}{\partial z_i} = a_k(\delta_{ki}-a_i)
+\]
+
+\textbf{2. Applying the Chain Rule for Loss $L$}
+
+The Categorical Cross-Entropy loss for a single sample is $L = -\sum_k Y_k \ln(a_k)$. By applying the chain rule to compute $\delta_i = \dfrac{\partial L}{\partial z_i}$:
+\[
+\delta_i = \sum_k \frac{\partial L}{\partial a_k}\frac{\partial a_k}{\partial z_i}
+\]
+
+Since $\dfrac{\partial L}{\partial a_k} = -\dfrac{Y_k}{a_k}$:
+\[
+\delta_i = \sum_k \left(-\frac{Y_k}{a_k}\right)\left[a_k(\delta_{ki}-a_i)\right] = -\sum_k Y_k(\delta_{ki}-a_i) = -\sum_k Y_k \delta_{ki} + \sum_k Y_k a_i
+\]
+
+\textbf{3. Final Reduction}
+
+\begin{enumerate}
+    \item Since $Y$ is a one-hot vector, $\sum_k Y_k = 1$. Therefore, $\sum_k Y_k a_i = a_i \sum_k Y_k = a_i$.
+    \item The Kronecker delta $\delta_{ki}$ isolates the term where $k=i$, so $\sum_k Y_k \delta_{ki} = Y_i$.
+\end{enumerate}
+
+Substituting these two reductions back into the expression:
+\[
+\delta_i = a_i - Y_i \quad\Longrightarrow\quad \boxed{\delta^2 = A^2 - Y}
+\]
+
+This elegant cancellation eliminates numerical instability during training and speeds up computation.
+
+\subsection{Proof: Derivation of Error Propagation (\texorpdfstring{$\delta^l$}{delta l}) and Bias Gradient (\texorpdfstring{$\frac{\partial L}{\partial b^l}$}{dL/db l})}
+
+To understand how errors flow backward through hidden layers, we apply the multivariable chain rule to the fundamental forward pass equations of any layer $l$:
+$$ z^l = W^la^{l-1} + b^l,\quad a^l = \sigma(z^l)$$
+
+where the local error vector is formally defined as $\delta^l = \frac{\partial L}{\partial z^l}$.
+
+\textbf{1. Derivation of the Bias Gradient (BP3)}
+
+We compute the partial derivative of the loss function $L$ with respect to the bias vector $b^l$. Applying the chain rule:
+\[
+\frac{\partial L}{\partial b^l} = \frac{\partial L}{\partial z^l}\cdot\frac{\partial z^l}{\partial b^l}
+\]
+
+From the pre-activation equation $z^l = W^l a^{l-1} + b^l$, the derivative with respect to the bias term is simply the identity matrix ($\frac{\partial z^l}{\partial b^l} = 1$) because $b^l$ is added directly without any scaling factor. Substituting $\delta^l = \frac{\partial L}{\partial z^l}$:
+\[
+\boxed{\frac{\partial L}{\partial b^l} = \delta^l}
+\]
+
+This proves that the gradient with respect to any bias vector is identically equal to the local error vector of that layer.
+
+\textbf{2. Derivation of Hidden Layer Error Projection (BP2)}
+
+For a single neuron $j$ in hidden layer $l$, its pre-activation $z^l_j$ influences the loss $L$ through \textbf{all} $k$ neurons in the subsequent layer $l+1$. By the multivariable chain rule:
+\[
+\delta^l_j = \frac{\partial L}{\partial z^l_j} = \sum_k \frac{\partial L}{\partial z^{l+1}_k}\cdot\frac{\partial z^{l+1}_k}{\partial z^l_j}
+\]
+
+By definition, the error at neuron $k$ in layer $l+1$ is $\delta^{l+1}_k = \frac{\partial L}{\partial z^{l+1}_k}$. Substituting this into the summation gives:
+\[
+\delta^l_j = \sum_k \delta^{l+1}_k \cdot \frac{\partial z^{l+1}_k}{\partial z^l_j}
+\]
+
+Next, we evaluate the internal derivative $\frac{\partial z^{l+1}_k}{\partial z^l_j}$. Knowing that $z^{l+1}_k = \sum_m W^{l+1}_{km} a^l_m + b^{l+1}_k$ and $a^l_j = \sigma(z^l_j)$:
+\[
+\frac{\partial z^{l+1}_k}{\partial z^l_j} = \frac{\partial z^{l+1}_k}{\partial a^l_j}\cdot\frac{\partial a^l_j}{\partial z^l_j} = W^{l+1}_{kj}\cdot \sigma'(z^l_j)
+\]
+
+Substituting this derivative back into the sum yields:
+\[
+\delta^l_j = \sum_k \delta^{l+1}_k \cdot W^{l+1}_{kj}\cdot\sigma'(z^l_j) = \left(\sum_k W^{l+1}_{kj}\delta^{l+1}_k\right)\cdot\sigma'(z^l_j)
+\]
+
+\subsection{Vectorization and Matrix Transposition}
+
+The scalar sum $\sum_k W^{l+1}_{kj}\delta^{l+1}_k$ computes the inner product using the column index $j$ of matrix $W^{l+1}$. To express this in standard matrix-vector multiplication notation, we must transpose the weight matrix $(W^{l+1})^T$.
+
+Extending the scalar result across all neurons in layer $l$ using the Hadamard product ($\odot$) for element-wise multiplication by activation derivatives:
+\[
+\boxed{\delta^l = \left((W^{l+1})^T \delta^{l+1}\right) \odot \sigma'(z^l)}
+\]
+
+This proves that $(W^{l+1})^T$ acts as the backward mapping mechanism, distributing downstream errors proportionally to the weights that propagated them forward.
+
+\subsection{Output Layer Gradient (\texorpdfstring{$\delta^2$}{delta 2})}
+
+For a Softmax output combined with categorical cross-entropy loss, the gradient with respect to the pre-activation values simplifies to
+\[
+\delta^2 = A^2 - Y
+\]
+
+Therefore,
+\[
+\delta^2 \approx
+\begin{bmatrix} 0.4395 & 0.6381 \\ 0.5605 & 0.3619 \end{bmatrix}
+-
+\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}
+=
+\begin{bmatrix} -0.5605 & 0.6381 \\ 0.5605 & -0.6381 \end{bmatrix}
+\]
+
+\subsection{Weight and Bias Gradients at Layer 2 (\texorpdfstring{$dW^2$}{dW2}, \texorpdfstring{$db^2$}{db2})}
+
+The gradient with respect to the weights of Layer 2 is
+\[
+dW^2 = \frac{1}{m}\delta^2 (A^1)^T
+\]
+and the gradient with respect to the biases is
+\[
+db^2 = \frac{1}{m}\sum_{i=1}^m \delta^2_{:i}
+\]
+
+Thus,
+\[
+dW^2 = \frac{1}{2} \begin{bmatrix} -0.5605 & 0.6381 \\ 0.5605 & -0.6381 \end{bmatrix} \begin{bmatrix} 0.000 & 0.270 & 0.000 \\ 0.000 & 0.000 & 0.810 \end{bmatrix}
+\]
+
+which gives approximately
+\[
+dW^2 \approx \frac{1}{2} \begin{bmatrix} 0.000 & -0.1513 & 0.5168 \\ 0.000 & 0.1513 & -0.5168 \end{bmatrix}
+\]
+\[
+= \begin{bmatrix} 0.0000 & -0.0757 & 0.2584 \\ 0.0000 & 0.0757 & -0.2584 \end{bmatrix}
+\]
+
+For the bias gradient,
+\[
+db^2 = \frac{1}{2} \begin{bmatrix} -0.5605 + 0.6381 \\ 0.5605 - 0.6381 \end{bmatrix}
+\]
+and therefore
+\[
+db^2 \approx \begin{bmatrix} 0.0388 \\ -0.0388 \end{bmatrix}
+\]
+
+\subsection{Hidden Layer Error Projection (\texorpdfstring{$\delta^1$}{delta 1})}
+
+\[
+\delta^1 = \left[(W^2)^T \delta^2\right] \odot \text{ReLU}'(Z^1)
+\]
+where
+\[
+\text{ReLU}'(z) =
+\begin{cases}
+1, & z>0 \\
+0, & z \le 0
+\end{cases}
+\quad\Longrightarrow\quad
+\text{ReLU}'(Z^1) =
+\begin{bmatrix} 0 & 0 \\ 1 & 0 \\ 0 & 1 \end{bmatrix}
+\]
+
+First, we compute the backprojected error:
+\[
+(W^2)^T \delta^2 = \begin{bmatrix} 0.40 & -0.10 \\ -0.30 & 0.60 \\ 0.50 & -0.20 \end{bmatrix} \begin{bmatrix} -0.5605 & 0.6381 \\ 0.5605 & -0.6381 \end{bmatrix} \approx \begin{bmatrix} -0.2803 & 0.3191 \\ 0.5045 & -0.5743 \\ -0.3924 & 0.4467 \end{bmatrix}
+\]
+
+Applying the Hadamard product with the ReLU derivative:
+\[
+\delta^1 \approx
+\begin{bmatrix} -0.2803 & 0.3191 \\ 0.5045 & -0.5743 \\ -0.3924 & 0.4467 \end{bmatrix} \odot \begin{bmatrix} 0 & 0 \\ 1 & 0 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 0.0000 & 0.0000 \\ 0.5045 & 0.0000 \\ 0.0000 & 0.4467 \end{bmatrix}
+\]
+
+\subsection{Weight and Bias Gradients at Layer 1 (\texorpdfstring{$dW^1$}{dW1}, \texorpdfstring{$db^1$}{db1})}
+
+\[
+dW^1 = \frac{1}{m}\delta^1 (A^0)^T = \frac{1}{2} \begin{bmatrix} 0.0000 & 0.0000 \\ 0.5045 & 0.0000 \\ 0.0000 & 0.4467 \end{bmatrix} \begin{bmatrix} 0.5 & 0.8 & -0.1 & 0.3 \\ -0.2 & 0.4 & 0.9 & -0.6 \end{bmatrix}
+\]
+
+\[
+dW^1 \approx
+\begin{bmatrix}
+0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+0.1261 & 0.2018 & -0.0252 & 0.0757 \\
+-0.0447 & 0.0893 & 0.2010 & -0.1340
+\end{bmatrix}
+\]
+
+For the bias gradient:
+\[
+db^1 = \frac{1}{m}\sum_{i=1}^m \delta^1_{:i} = \frac{1}{2} \begin{bmatrix} 0.0000 + 0.0000 \\ 0.5045 + 0.0000 \\ 0.0000 + 0.4467 \end{bmatrix} \approx \begin{bmatrix} 0.0000 \\ 0.2523 \\ 0.2234 \end{bmatrix}
+\]
+
+\newpage
+\section{Step 3: Adam Optimizer Step}
+
+Adam combines momentum-based optimization and adaptive learning rates. For each parameter $\theta$, Adam maintains a first moment estimate $m_t$ (mean of gradients) and a second raw moment estimate $v_t$ (uncentered variance of gradients).
+
+\subsection{Accumulation \& Bias Correction Formulas}
+
+The update rules for step $t$ are:
+\[
+m_t = \beta_1 m_{t-1} + (1-\beta_1)g_t, \qquad v_t = \beta_2 v_{t-1} + (1-\beta_2)g_t^2
+\]
+
+Bias correction accounts for initialization at zero ($m_0=0, v_0=0$):
+\[
+\hat{m}_t = \frac{m_t}{1-\beta_1^t}, \qquad \hat{v}_t = \frac{v_t}{1-\beta_2^t}
+\]
+
+For the first iteration ($t=1$) with standard hyper-parameters $\beta_1 = 0.9$ and $\beta_2 = 0.999$:
+\[
+m_1 = 0.1\,g_1 \implies \hat{m}_1 = \frac{0.1\,g_1}{1-0.9} = g_1
+\]
+\[
+v_1 = 0.001\,g_1^2 \implies \hat{v}_1 = \frac{0.001\,g_1^2}{1-0.999} = g_1^2
+\]
+
+Therefore, at $t=1$, the Adam parameter update simplifies to:
+\[
+\theta_{\text{new}} = \theta - \alpha \frac{\hat{m}_1}{\sqrt{\hat{v}_1} + \epsilon} = \theta - \alpha \frac{g}{\sqrt{g^2} + \epsilon} = \theta - \alpha \frac{g}{|g| + \epsilon}
+\]
+
+Given $\alpha = 0.001$ and $\epsilon = 10^{-8}$ (negligible for $g \neq 0$), the update rule simplifies element-wise to:
+\[
+\theta_{\text{new}} \approx \theta - \alpha \cdot \text{sign}(g) \quad (g \neq 0), \qquad \theta_{\text{new}} = \theta \quad (g = 0)
+\]
+
+---
+
+\subsection{Explicit Parameter Updates}
+
+We now apply Adam explicitly to every weight matrix and bias vector.
+
+\subsubsection{Update of Layer 1 Weights (\texorpdfstring{$W^1$}{W1})}
+
+Original Weights $W^1$:
+\[
+W^1 =
+\begin{bmatrix}
+0.350 & -0.500 & 0.200 & -0.100 \\
+-0.250 & 0.400 & -0.300 & 0.150 \\
+0.100 & 0.050 & 0.600 & -0.450
+\end{bmatrix}
+\]
+
+Gradients $dW^1$:
+\[
+dW^1 \approx
+\begin{bmatrix}
+0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+0.1261 & 0.2018 & -0.0252 & 0.0757 \\
+-0.0447 & 0.0893 & 0.2010 & -0.1340
+\end{bmatrix}
+\]
+
+Element-wise sign of gradients $\text{sign}(dW^1)$:
+\[
+\text{sign}(dW^1) =
+\begin{bmatrix}
+0 & 0 & 0 & 0 \\
++1 & +1 & -1 & +1 \\
+-1 & +1 & +1 & -1
+\end{bmatrix}
+\]
+
+Applying $W^1_{\text{new}} = W^1 - 0.001 \cdot \text{sign}(dW^1)$:
+\[
+W^1_{\text{new}} =
+\begin{bmatrix}
+0.350 - 0.000 & -0.500 - 0.000 & 0.200 - 0.000 & -0.100 - 0.000 \\
+-0.250 - 0.001 & 0.400 - 0.001 & -0.300 - (-0.001) & 0.150 - 0.001 \\
+0.100 - (-0.001) & 0.050 - 0.001 & 0.600 - 0.001 & -0.450 - (-0.001)
+\end{bmatrix}
+\]
+
+\[
+W^1_{\text{new}} =
+\begin{bmatrix}
+0.350 & -0.500 & 0.200 & -0.100 \\
+-0.251 & 0.399 & -0.299 & 0.149 \\
+0.101 & 0.049 & 0.599 & -0.449
+\end{bmatrix}
+\]
+
+---
+\subsubsection{Update of Layer 1 Biases (\texorpdfstring{$b^1$}{b1})}
+
+Original Biases $b^1$:
+\[
+b^1 = \begin{bmatrix} 0.000 \\ 0.000 \\ 0.000 \end{bmatrix}
+\]
+
+Gradients $db^1$:
+\[
+db^1 \approx \begin{bmatrix} 0.0000 \\ 0.2523 \\ 0.2234 \end{bmatrix} \implies \text{sign}(db^1) = \begin{bmatrix} 0 \\ +1 \\ +1 \end{bmatrix}
+\]
+
+Applying $b^1_{\text{new}} = b^1 - 0.001 \cdot \text{sign}(db^1)$:
+\[
+b^1_{\text{new}} =
+\begin{bmatrix}
+0.000 - 0.000 \\
+0.000 - 0.001 \\
+0.000 - 0.001
+\end{bmatrix}
+=
+\begin{bmatrix}
+0.000 \\
+-0.001 \\
+-0.001
+\end{bmatrix}
+\]
+
+---
+
+\subsubsection{Update of Layer 2 Weights (\texorpdfstring{$W^2$}{W2})}
+
+Original Weights $W^2$:
+\[
+W^2 =
+\begin{bmatrix}
+0.400 & -0.300 & 0.500 \\
+-0.100 & 0.600 & -0.200
+\end{bmatrix}
+\]
+
+Gradients $dW^2$:
+\[
+dW^2 \approx
+\begin{bmatrix} 0.0000 & -0.0757 & 0.2584 \\ 0.0000 & 0.0757 & -0.2584 \end{bmatrix}
+\implies
+\text{sign}(dW^2) =
+\begin{bmatrix} 0 & -1 & +1 \\ 0 & +1 & -1 \end{bmatrix}
+\]
+
+Applying $W^2_{\text{new}} = W^2 - 0.001 \cdot \text{sign}(dW^2)$:
+\[
+W^2_{\text{new}} =
+\begin{bmatrix}
+0.400 - 0.000 & -0.300 - (-0.001) & 0.500 - 0.001 \\
+-0.100 - 0.000 & 0.600 - 0.001 & -0.200 - (-0.001)
+\end{bmatrix}
+=
+\begin{bmatrix}
+0.400 & -0.299 & 0.499 \\
+-0.100 & 0.599 & -0.199
+\end{bmatrix}
+\]
+
+---
+
+\subsubsection{Update of Layer 2 Biases (\texorpdfstring{$b^2$}{b2})}
+
+Original Biases $b^2$:
+\[
+b^2 = \begin{bmatrix} 0.000 \\ 0.000 \end{bmatrix}
+\]
+
+Gradients $db^2$:
+\[
+db^2 \approx \begin{bmatrix} 0.0388 \\ -0.0388 \end{bmatrix} \implies \text{sign}(db^2) = \begin{bmatrix} +1 \\ -1 \end{bmatrix}
+\]
+
+Applying $b^2_{\text{new}} = b^2 - 0.001 \cdot \text{sign}(db^2)$:
+\[
+b^2_{\text{new}} =
+\begin{bmatrix}
+0.000 - 0.001 \\
+0.000 - (-0.001)
+\end{bmatrix}
+=
+\begin{bmatrix}
+-0.001 \\
+0.001
+\end{bmatrix}
+\]
+
+---
+
+\subsection{Summary of Parameter Updates}
+
+These updated parameters constitute the exact input state for iteration $t=2$:
+
+\[
+W^1_{\text{new}} = \begin{bmatrix} 0.350 & -0.500 & 0.200 & -0.100 \\ -0.251 & 0.399 & -0.299 & 0.149 \\ 0.101 & 0.049 & 0.599 & -0.449 \end{bmatrix}, \quad
+b^1_{\text{new}} = \begin{bmatrix} 0.000 \\ -0.001 \\ -0.001 \end{bmatrix}
+\]
+
+\[
+W^2_{\text{new}} = \begin{bmatrix} 0.400 & -0.299 & 0.499 \\ -0.100 & 0.599 & -0.199 \end{bmatrix}, \quad
+b^2_{\text{new}} = \begin{bmatrix} -0.001 \\ 0.001 \end{bmatrix}
+\]
+
+\subsection{Behavior in Subsequent Iterations (\texorpdfstring{$t \gg 1$}{t >> 1})}
+
+While $t=1$ simplifies to a sign-based step ($\pm\alpha$) due to initial bias-correction scaling, Adam’s true adaptive nature emerges as training progresses ($t > 1$):
+
+\begin{enumerate}
+    \item \textbf{Decaying Bias Correction:} 
+    As step count $t$ grows, the factor $(1-\beta_2^t)$ rapidly approaches $1$ (since $\beta_2^{t} \to 0$). The denominator transitions from scaling with current gradients to tracking the true exponential moving average of squared historical gradients:
+    \[
+    \hat{v}_t \approx v_t = \beta_2 v_{t-1} + (1-\beta_2)g_t^2
+    \]
+    
+    \item \textbf{Adaptive Step Sizing via Denominator:} 
+    The term $\sqrt{\hat{v}_t} + \epsilon$ acts as an element-wise standard deviation normalizer:
+    \begin{itemize}
+        \item \textbf{Frequent/Large Gradients:} Produce large $v_t$ values, resulting in a larger denominator. This automatically \textbf{scales down} the effective learning rate, preventing dramatic oscillation.
+        \item \textbf{Infrequent/Sparse Gradients:} Produce small $v_t$ values, resulting in a smaller denominator. This automatically \textbf{amplifies} updates, ensuring sparse parameters continue to learn effectively.
+    \end{itemize}
+    
+    \item \textbf{Momentum Smoothing:} 
+    The numerator $\hat{m}_t$ accumulates past directional momentum ($m_t = \beta_1 m_{t-1} + (1-\beta_1)g_t$). This dampens high-frequency noise in mini-batch gradients and accelerates convergence through flat valleys where pure SGD slows down.
+\end{enumerate}
+
+Thus, Adam seamlessly transitions from an aggressive sign-like exploratory step at initialization ($t=1$) to a stable, curvature-aware adaptive optimization regime as historical statistics accumulate.
+
+\end{document}
